@@ -202,17 +202,21 @@ export async function initializeNotionDatabases(client: Client, rootPageId: stri
 
   const dbIds: NotionDatabaseIds = {}
 
+  // 1단계: 모든 데이터베이스 생성 (Relation 속성 없이)
+  
   // Works 데이터베이스
   dbIds.works = await createNotionDatabase(client, rootPageId, '작품', {
     '제목': { title: {} },
     '카테고리': { rich_text: {} },
+    '태그': { multi_select: { options: [] } },
     '생성일': { date: {} },
     '수정일': { date: {} },
   })
 
   // Synopses 데이터베이스
   dbIds.synopses = await createNotionDatabase(client, rootPageId, '시놉시스', {
-    '작품 ID': { rich_text: {} },
+    '작품': { relation: { database_id: dbIds.works } },
+    '구조': { rich_text: {} },
     '생성일': { date: {} },
     '수정일': { date: {} },
   })
@@ -220,9 +224,10 @@ export async function initializeNotionDatabases(client: Client, rootPageId: stri
   // Characters 데이터베이스
   dbIds.characters = await createNotionDatabase(client, rootPageId, '캐릭터', {
     '이름': { title: {} },
-    '작품 ID': { rich_text: {} },
+    '작품': { relation: { database_id: dbIds.works } },
     '역할': { rich_text: {} },
     '주연 여부': { checkbox: {} },
+    '설명': { rich_text: {} },
     '생성일': { date: {} },
     '수정일': { date: {} },
   })
@@ -230,8 +235,28 @@ export async function initializeNotionDatabases(client: Client, rootPageId: stri
   // Settings 데이터베이스
   dbIds.settings = await createNotionDatabase(client, rootPageId, '설정', {
     '이름': { title: {} },
-    '작품 ID': { rich_text: {} },
-    '유형': { select: { options: [] } },
+    '작품': { relation: { database_id: dbIds.works } },
+    '유형': { select: { options: [
+      { name: '세계관', color: 'blue' },
+      { name: '장소', color: 'green' },
+      { name: '시간', color: 'orange' },
+      { name: '기타', color: 'gray' },
+    ] } },
+    '설명': { rich_text: {} },
+    '생성일': { date: {} },
+    '수정일': { date: {} },
+  })
+
+  // Chapters 데이터베이스
+  dbIds.chapters = await createNotionDatabase(client, rootPageId, '장', {
+    '제목': { title: {} },
+    '작품': { relation: { database_id: dbIds.works } },
+    '구조 구분': { select: { options: [
+      { name: '기', color: 'blue' },
+      { name: '승', color: 'green' },
+      { name: '전', color: 'orange' },
+      { name: '결', color: 'red' },
+    ] } },
     '생성일': { date: {} },
     '수정일': { date: {} },
   })
@@ -240,35 +265,101 @@ export async function initializeNotionDatabases(client: Client, rootPageId: stri
   dbIds.episodes = await createNotionDatabase(client, rootPageId, '회차', {
     '회차 번호': { number: {} },
     '제목': { title: {} },
-    '작품 ID': { rich_text: {} },
-    '장 ID': { rich_text: {} },
+    '작품': { relation: { database_id: dbIds.works } },
+    '장': { relation: { database_id: dbIds.chapters } },
+    '내용': { rich_text: {} },
+    '글자수': { number: {} },
+    '글자수(공백제외)': { number: {} },
+    '선작수': { number: {} },
+    '조회수': { number: {} },
     '생성일': { date: {} },
     '수정일': { date: {} },
   })
 
-  // Chapters 데이터베이스
-  dbIds.chapters = await createNotionDatabase(client, rootPageId, '장', {
-    '제목': { title: {} },
-    '작품 ID': { rich_text: {} },
-    '구조 구분': { select: { options: [] } },
-    '생성일': { date: {} },
-    '수정일': { date: {} },
-  })
-
-  // Tags 데이터베이스
+  // Tags 데이터베이스 (태그는 작품과 직접 연결하지 않음)
   dbIds.tags = await createNotionDatabase(client, rootPageId, '태그', {
     '이름': { title: {} },
-    '카테고리 ID': { rich_text: {} },
+    '카테고리': { rich_text: {} },
     '생성일': { date: {} },
     '수정일': { date: {} },
   })
+
+  // 2단계: Works 데이터베이스에 역관계 속성 추가 (양방향 관계)
+  try {
+    await client.databases.update({
+      database_id: dbIds.works,
+      properties: {
+        '시놉시스': { 
+          relation: { 
+            database_id: dbIds.synopses,
+            type: 'dual_property',
+            // @ts-ignore - Notion API types
+            dual_property: { synced_property_name: '작품' }
+          } 
+        },
+        '캐릭터': { 
+          relation: { 
+            database_id: dbIds.characters,
+            type: 'dual_property',
+            // @ts-ignore
+            dual_property: { synced_property_name: '작품' }
+          } 
+        },
+        '설정': { 
+          relation: { 
+            database_id: dbIds.settings,
+            type: 'dual_property',
+            // @ts-ignore
+            dual_property: { synced_property_name: '작품' }
+          } 
+        },
+        '장': { 
+          relation: { 
+            database_id: dbIds.chapters,
+            type: 'dual_property',
+            // @ts-ignore
+            dual_property: { synced_property_name: '작품' }
+          } 
+        },
+        '회차': { 
+          relation: { 
+            database_id: dbIds.episodes,
+            type: 'dual_property',
+            // @ts-ignore
+            dual_property: { synced_property_name: '작품' }
+          } 
+        },
+      },
+    })
+  } catch (error) {
+    console.warn('Works 데이터베이스 역관계 속성 추가 실패 (이미 존재할 수 있음):', error)
+  }
+
+  // Chapters 데이터베이스에 회차 역관계 추가
+  try {
+    await client.databases.update({
+      database_id: dbIds.chapters,
+      properties: {
+        '회차': { 
+          relation: { 
+            database_id: dbIds.episodes,
+            type: 'dual_property',
+            // @ts-ignore
+            dual_property: { synced_property_name: '장' }
+          } 
+        },
+      },
+    })
+  } catch (error) {
+    console.warn('Chapters 데이터베이스 역관계 속성 추가 실패:', error)
+  }
 
   setNotionDatabaseIds(dbIds)
   return dbIds
 }
 
 // 데이터를 노션 형식으로 변환
-function workToNotionProperties(work: Work): any {
+function workToNotionProperties(work: Work, workPageId?: string): any {
   return {
     '제목': {
       title: [{ text: { content: work.title } }],
@@ -276,11 +367,155 @@ function workToNotionProperties(work: Work): any {
     '카테고리': {
       rich_text: work.category ? [{ text: { content: work.category } }] : [],
     },
+    '태그': {
+      multi_select: work.tags.map(tag => ({ name: tag })),
+    },
     '생성일': {
       date: work.createdAt ? { start: work.createdAt.toISOString() } : null,
     },
     '수정일': {
       date: work.updatedAt ? { start: work.updatedAt.toISOString() } : null,
+    },
+  }
+}
+
+function synopsisToNotionProperties(synopsis: Synopsis, workPageId: string): any {
+  // 기/승/전/결 구조를 JSON 문자열로 변환
+  const structureJson = JSON.stringify(synopsis.structure)
+  
+  return {
+    '작품': {
+      relation: [{ id: workPageId }],
+    },
+    '구조': {
+      rich_text: [{ text: { content: structureJson } }],
+    },
+    '생성일': {
+      date: synopsis.createdAt ? { start: synopsis.createdAt.toISOString() } : null,
+    },
+    '수정일': {
+      date: synopsis.updatedAt ? { start: synopsis.updatedAt.toISOString() } : null,
+    },
+  }
+}
+
+function characterToNotionProperties(character: Character, workPageId: string): any {
+  return {
+    '이름': {
+      title: [{ text: { content: character.name } }],
+    },
+    '작품': {
+      relation: [{ id: workPageId }],
+    },
+    '역할': {
+      rich_text: character.role ? [{ text: { content: character.role } }] : [],
+    },
+    '주연 여부': {
+      checkbox: character.isMainCharacter || false,
+    },
+    '설명': {
+      rich_text: character.description ? [{ text: { content: character.description } }] : [],
+    },
+    '생성일': {
+      date: character.createdAt ? { start: character.createdAt.toISOString() } : null,
+    },
+    '수정일': {
+      date: character.updatedAt ? { start: character.updatedAt.toISOString() } : null,
+    },
+  }
+}
+
+function settingToNotionProperties(setting: Setting, workPageId: string): any {
+  const typeMap: Record<string, string> = {
+    'world': '세계관',
+    'location': '장소',
+    'time': '시간',
+    'other': '기타',
+  }
+  
+  return {
+    '이름': {
+      title: [{ text: { content: setting.name } }],
+    },
+    '작품': {
+      relation: [{ id: workPageId }],
+    },
+    '유형': {
+      select: setting.type ? { name: typeMap[setting.type] || '기타' } : null,
+    },
+    '설명': {
+      rich_text: setting.description ? [{ text: { content: setting.description } }] : [],
+    },
+    '생성일': {
+      date: setting.createdAt ? { start: setting.createdAt.toISOString() } : null,
+    },
+    '수정일': {
+      date: setting.updatedAt ? { start: setting.updatedAt.toISOString() } : null,
+    },
+  }
+}
+
+function chapterToNotionProperties(chapter: Chapter, workPageId: string): any {
+  const structureMap: Record<string, string> = {
+    'gi': '기',
+    'seung': '승',
+    'jeon': '전',
+    'gyeol': '결',
+  }
+  
+  return {
+    '제목': {
+      title: [{ text: { content: chapter.title } }],
+    },
+    '작품': {
+      relation: [{ id: workPageId }],
+    },
+    '구조 구분': {
+      select: chapter.structureType ? { name: structureMap[chapter.structureType] || null } : null,
+    },
+    '생성일': {
+      date: chapter.createdAt ? { start: chapter.createdAt.toISOString() } : null,
+    },
+    '수정일': {
+      date: chapter.updatedAt ? { start: chapter.updatedAt.toISOString() } : null,
+    },
+  }
+}
+
+function episodeToNotionProperties(episode: Episode, workPageId: string, chapterPageId?: string): any {
+  return {
+    '회차 번호': {
+      number: episode.episodeNumber,
+    },
+    '제목': {
+      title: episode.title ? [{ text: { content: episode.title } }] : [],
+    },
+    '작품': {
+      relation: [{ id: workPageId }],
+    },
+    '장': {
+      relation: chapterPageId ? [{ id: chapterPageId }] : [],
+    },
+    '내용': {
+      rich_text: episode.content ? [{ text: { content: episode.content.replace(/<[^>]*>/g, '') } }] : [],
+    },
+    '글자수': {
+      number: episode.wordCount || null,
+    },
+    '글자수(공백제외)': {
+      number: null, // TODO: wordCountWithoutSpaces 필드 추가 필요
+    },
+    '선작수': {
+      number: episode.subscriberCount || null,
+    },
+    '조회수': {
+      number: episode.viewCount || null,
+    },
+    '생성일': {
+      date: episode.createdAt ? { start: episode.createdAt.toISOString() } : null,
+    },
+    '수정일': {
+      date: episode.updatedAt ? { start: episode.updatedAt.toISOString() } : null,
     },
   }
 }
@@ -311,16 +546,136 @@ export async function syncToNotion(
     Object.assign(dbIds, newDbIds)
   }
 
-  // Works 동기화
+  // 작품별로 페이지 ID 매핑 저장
+  const workPageMap = new Map<string, string>()
+  const chapterPageMap = new Map<string, string>()
+
+  // 1. Works 동기화
   if (dbIds.works) {
     for (const work of data.works) {
       try {
-        await client.pages.create({
+        const workPage = await client.pages.create({
           parent: { database_id: dbIds.works },
           properties: workToNotionProperties(work),
         })
+        workPageMap.set(work.id, workPage.id)
       } catch (error) {
         console.error(`작품 ${work.id} 동기화 실패:`, error)
+      }
+    }
+  }
+
+  // 2. Chapters 동기화 (작품에 연결)
+  if (dbIds.chapters) {
+    for (const chapter of data.chapters) {
+      const workPageId = workPageMap.get(chapter.workId)
+      if (!workPageId) continue
+      
+      try {
+        const chapterPage = await client.pages.create({
+          parent: { database_id: dbIds.chapters },
+          properties: chapterToNotionProperties(chapter, workPageId),
+        })
+        chapterPageMap.set(chapter.id, chapterPage.id)
+      } catch (error) {
+        console.error(`장 ${chapter.id} 동기화 실패:`, error)
+      }
+    }
+  }
+
+  // 3. Synopses 동기화 (작품에 연결)
+  if (dbIds.synopses) {
+    for (const synopsis of data.synopses) {
+      const workPageId = workPageMap.get(synopsis.workId)
+      if (!workPageId) continue
+      
+      try {
+        await client.pages.create({
+          parent: { database_id: dbIds.synopses },
+          properties: synopsisToNotionProperties(synopsis, workPageId),
+        })
+      } catch (error) {
+        console.error(`시놉시스 ${synopsis.id} 동기화 실패:`, error)
+      }
+    }
+  }
+
+  // 4. Characters 동기화 (작품에 연결)
+  if (dbIds.characters) {
+    for (const character of data.characters) {
+      const workPageId = workPageMap.get(character.workId)
+      if (!workPageId) continue
+      
+      try {
+        await client.pages.create({
+          parent: { database_id: dbIds.characters },
+          properties: characterToNotionProperties(character, workPageId),
+        })
+      } catch (error) {
+        console.error(`캐릭터 ${character.id} 동기화 실패:`, error)
+      }
+    }
+  }
+
+  // 5. Settings 동기화 (작품에 연결)
+  if (dbIds.settings) {
+    for (const setting of data.settings) {
+      const workPageId = workPageMap.get(setting.workId)
+      if (!workPageId) continue
+      
+      try {
+        await client.pages.create({
+          parent: { database_id: dbIds.settings },
+          properties: settingToNotionProperties(setting, workPageId),
+        })
+      } catch (error) {
+        console.error(`설정 ${setting.id} 동기화 실패:`, error)
+      }
+    }
+  }
+
+  // 6. Episodes 동기화 (작품과 장에 연결)
+  if (dbIds.episodes) {
+    for (const episode of data.episodes) {
+      const workPageId = workPageMap.get(episode.workId)
+      if (!workPageId) continue
+      
+      const chapterPageId = episode.chapterId ? chapterPageMap.get(episode.chapterId) : undefined
+      
+      try {
+        await client.pages.create({
+          parent: { database_id: dbIds.episodes },
+          properties: episodeToNotionProperties(episode, workPageId, chapterPageId),
+        })
+      } catch (error) {
+        console.error(`회차 ${episode.id} 동기화 실패:`, error)
+      }
+    }
+  }
+
+  // 7. Tags 동기화 (태그는 작품과 직접 연결하지 않음)
+  if (dbIds.tags) {
+    for (const tag of data.tags) {
+      try {
+        await client.pages.create({
+          parent: { database_id: dbIds.tags },
+          properties: {
+            '이름': {
+              title: [{ text: { content: tag.name } }],
+            },
+            '카테고리': {
+              rich_text: tag.categoryId ? [{ text: { content: tag.categoryId } }] : [],
+            },
+            '생성일': {
+              date: tag.createdAt ? { start: tag.createdAt.toISOString() } : null,
+            },
+            '수정일': {
+              date: tag.updatedAt ? { start: tag.updatedAt.toISOString() } : null,
+            },
+          },
+        })
+      } catch (error) {
+        console.error(`태그 ${tag.id} 동기화 실패:`, error)
       }
     }
   }
