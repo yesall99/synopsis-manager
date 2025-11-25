@@ -512,11 +512,22 @@ export async function syncToNotion(
   // 1. Works 동기화
   if (dbIds.works) {
     console.log(`작품 ${data.works.length}개 동기화 시작...`)
+    console.log(`데이터베이스 ID: ${dbIds.works}`)
+    
+    if (data.works.length === 0) {
+      console.warn('동기화할 작품이 없습니다.')
+      return
+    }
+    
     for (const work of data.works) {
       try {
+        console.log(`작품 "${work.title}" 동기화 시도 중...`)
+        const properties = workToNotionProperties(work)
+        console.log('작품 속성:', JSON.stringify(properties, null, 2))
+        
         const workPage = await client.pages.create({
           parent: { database_id: dbIds.works },
-          properties: workToNotionProperties(work),
+          properties: properties,
         })
         workPageMap.set(work.id, workPage.id)
         console.log(`작품 "${work.title}" 동기화 완료 (ID: ${workPage.id})`)
@@ -535,6 +546,9 @@ export async function syncToNotion(
           console.log(`작품 "${work.title}"의 연재 페이지 생성 완료`)
         } catch (error) {
           console.warn(`작품 "${work.title}"의 연재 페이지 생성 실패:`, error)
+          if (error instanceof Error) {
+            console.warn('에러 메시지:', error.message)
+          }
         }
       } catch (error) {
         console.error(`작품 ${work.id} (${work.title}) 동기화 실패:`, error)
@@ -542,9 +556,14 @@ export async function syncToNotion(
           console.error('에러 메시지:', error.message)
           console.error('에러 스택:', error.stack)
         }
+        // 에러가 발생해도 계속 진행
       }
     }
     console.log(`작품 동기화 완료: ${workPageMap.size}개 성공`)
+    
+    if (workPageMap.size === 0) {
+      console.error('작품 동기화가 실패했습니다. 브라우저 콘솔의 에러 메시지를 확인해주세요.')
+    }
   } else {
     console.error('작품 데이터베이스 ID가 없습니다.')
     return
