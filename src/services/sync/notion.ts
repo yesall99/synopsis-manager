@@ -2,17 +2,9 @@ import { Client } from '@notionhq/client'
 import type { Work, Synopsis, Character, Setting, Episode, Chapter, Tag } from '@/types'
 
 // Cloudflare Pages Functions 프록시를 사용하는 노션 API 클라이언트
-// 프로덕션 환경에서는 `/api/notion` 프록시를 통해 호출합니다.
+// 개발/프로덕션 환경 모두 `/api/notion` 프록시를 통해 호출합니다.
 const getProxyUrl = (path: string): string => {
-  // 개발 환경에서는 Vite 프록시를 사용하거나, 직접 호출 시도
-  // 프로덕션 환경에서는 Cloudflare Pages Functions 프록시 사용
-  if (import.meta.env.DEV) {
-    // 개발 환경: 로컬 프록시 서버 또는 직접 호출
-    // 실제로는 개발 시에도 Cloudflare Pages Functions를 사용하거나,
-    // Vite 프록시 설정을 추가할 수 있습니다.
-    return `https://api.notion.com/v1/${path}`
-  }
-  // 프로덕션 환경: Cloudflare Pages Functions 프록시 사용
+  // 개발 환경에서는 Vite 프록시 사용, 프로덕션에서는 Cloudflare Pages Functions 사용
   return `/api/notion/${path}`
 }
 
@@ -37,15 +29,31 @@ const proxyFetch = async (url: string, options?: any): Promise<Response> => {
   // 프록시 URL로 변환
   const proxyUrl = getProxyUrl(path)
   
+  // 헤더 정규화 (대소문자 구분 없이)
+  const headers = new Headers(options?.headers || {})
+  
+  // Authorization 헤더 확인 및 설정
+  // 노션 클라이언트가 auth 옵션을 사용하면 내부적으로 Authorization 헤더를 추가할 수 있음
+  const existingAuth = headers.get('Authorization') || headers.get('authorization')
+  if (!existingAuth) {
+    headers.set('Authorization', `Bearer ${apiKey}`)
+  }
+  
+  // Notion-Version 헤더 확인 및 설정
+  if (!headers.get('Notion-Version') && !headers.get('notion-version')) {
+    headers.set('Notion-Version', '2022-06-28')
+  }
+  
+  // Content-Type 헤더 확인 및 설정
+  if (!headers.get('Content-Type') && !headers.get('content-type')) {
+    headers.set('Content-Type', 'application/json')
+  }
+  
   // 프록시를 통해 요청
   return fetch(proxyUrl, {
-    ...options,
-    headers: {
-      ...(options?.headers || {}),
-      'Authorization': `Bearer ${apiKey}`,
-      'Notion-Version': options?.headers?.['Notion-Version'] || '2022-06-28',
-      'Content-Type': 'application/json',
-    },
+    method: options?.method || 'GET',
+    headers: headers,
+    body: options?.body,
   })
 }
 
