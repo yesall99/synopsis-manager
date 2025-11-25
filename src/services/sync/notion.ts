@@ -481,7 +481,8 @@ export async function syncToNotion(
     tags: Tag[]
   }
 ): Promise<void> {
-  console.log('노션 동기화 시작:', {
+  console.log('=== 노션 동기화 시작 ===')
+  console.log('노션 동기화 데이터:', {
     works: data.works.length,
     synopses: data.synopses.length,
     characters: data.characters.length,
@@ -491,17 +492,21 @@ export async function syncToNotion(
     tags: data.tags.length,
   })
 
-  const dbIds = getNotionDatabaseIds()
+  let dbIds = getNotionDatabaseIds()
+  console.log('현재 저장된 데이터베이스 ID:', dbIds)
 
   // 데이터베이스가 없으면 초기화
   if (!dbIds.works) {
+    console.log('데이터베이스가 없어서 초기화 시작...')
     const rootPageId = getRootPageId()
     if (!rootPageId) {
       throw new Error('Root page ID is required. Please connect to Notion first.')
     }
     await initializeNotionDatabases(client, rootPageId)
-    const newDbIds = getNotionDatabaseIds()
-    Object.assign(dbIds, newDbIds)
+    dbIds = getNotionDatabaseIds()
+    console.log('초기화 후 데이터베이스 ID:', dbIds)
+  } else {
+    console.log('기존 데이터베이스 사용:', dbIds.works)
   }
 
   // 작품별로 페이지 ID 매핑 저장
