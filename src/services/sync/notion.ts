@@ -537,6 +537,16 @@ export async function syncToNotion(
     tags: Tag[]
   }
 ): Promise<void> {
+  console.log('노션 동기화 시작:', {
+    works: data.works.length,
+    synopses: data.synopses.length,
+    characters: data.characters.length,
+    settings: data.settings.length,
+    episodes: data.episodes.length,
+    chapters: data.chapters.length,
+    tags: data.tags.length,
+  })
+
   const dbIds = getNotionDatabaseIds()
 
   // 데이터베이스가 없으면 초기화
@@ -556,6 +566,7 @@ export async function syncToNotion(
 
   // 1. Works 동기화
   if (dbIds.works) {
+    console.log(`작품 ${data.works.length}개 동기화 시작...`)
     for (const work of data.works) {
       try {
         const workPage = await client.pages.create({
@@ -563,17 +574,31 @@ export async function syncToNotion(
           properties: workToNotionProperties(work),
         })
         workPageMap.set(work.id, workPage.id)
+        console.log(`작품 "${work.title}" 동기화 완료 (ID: ${workPage.id})`)
       } catch (error) {
-        console.error(`작품 ${work.id} 동기화 실패:`, error)
+        console.error(`작품 ${work.id} (${work.title}) 동기화 실패:`, error)
+        // 에러 상세 정보 출력
+        if (error instanceof Error) {
+          console.error('에러 메시지:', error.message)
+          console.error('에러 스택:', error.stack)
+        }
       }
     }
+    console.log(`작품 동기화 완료: ${workPageMap.size}개 성공`)
+  } else {
+    console.error('작품 데이터베이스 ID가 없습니다.')
   }
 
   // 2. Chapters 동기화 (작품에 연결)
   if (dbIds.chapters) {
+    console.log(`장 ${data.chapters.length}개 동기화 시작...`)
+    let chapterSuccessCount = 0
     for (const chapter of data.chapters) {
       const workPageId = workPageMap.get(chapter.workId)
-      if (!workPageId) continue
+      if (!workPageId) {
+        console.warn(`장 "${chapter.title}"의 작품 ID(${chapter.workId})에 해당하는 작품 페이지를 찾을 수 없습니다.`)
+        continue
+      }
       
       try {
         const chapterPage = await client.pages.create({
@@ -581,68 +606,120 @@ export async function syncToNotion(
           properties: chapterToNotionProperties(chapter, workPageId),
         })
         chapterPageMap.set(chapter.id, chapterPage.id)
+        chapterSuccessCount++
+        console.log(`장 "${chapter.title}" 동기화 완료`)
       } catch (error) {
-        console.error(`장 ${chapter.id} 동기화 실패:`, error)
+        console.error(`장 ${chapter.id} (${chapter.title}) 동기화 실패:`, error)
+        if (error instanceof Error) {
+          console.error('에러 메시지:', error.message)
+        }
       }
     }
+    console.log(`장 동기화 완료: ${chapterSuccessCount}개 성공`)
+  } else {
+    console.warn('장 데이터베이스 ID가 없습니다.')
   }
 
   // 3. Synopses 동기화 (작품에 연결)
   if (dbIds.synopses) {
+    console.log(`시놉시스 ${data.synopses.length}개 동기화 시작...`)
+    let synopsisSuccessCount = 0
     for (const synopsis of data.synopses) {
       const workPageId = workPageMap.get(synopsis.workId)
-      if (!workPageId) continue
+      if (!workPageId) {
+        console.warn(`시놉시스 ${synopsis.id}의 작품 ID(${synopsis.workId})에 해당하는 작품 페이지를 찾을 수 없습니다.`)
+        continue
+      }
       
       try {
         await client.pages.create({
           parent: { database_id: dbIds.synopses },
           properties: synopsisToNotionProperties(synopsis, workPageId),
         })
+        synopsisSuccessCount++
+        console.log(`시놉시스 (작품 ID: ${synopsis.workId}) 동기화 완료`)
       } catch (error) {
         console.error(`시놉시스 ${synopsis.id} 동기화 실패:`, error)
+        if (error instanceof Error) {
+          console.error('에러 메시지:', error.message)
+        }
       }
     }
+    console.log(`시놉시스 동기화 완료: ${synopsisSuccessCount}개 성공`)
+  } else {
+    console.warn('시놉시스 데이터베이스 ID가 없습니다.')
   }
 
   // 4. Characters 동기화 (작품에 연결)
   if (dbIds.characters) {
+    console.log(`캐릭터 ${data.characters.length}개 동기화 시작...`)
+    let characterSuccessCount = 0
     for (const character of data.characters) {
       const workPageId = workPageMap.get(character.workId)
-      if (!workPageId) continue
+      if (!workPageId) {
+        console.warn(`캐릭터 "${character.name}"의 작품 ID(${character.workId})에 해당하는 작품 페이지를 찾을 수 없습니다.`)
+        continue
+      }
       
       try {
         await client.pages.create({
           parent: { database_id: dbIds.characters },
           properties: characterToNotionProperties(character, workPageId),
         })
+        characterSuccessCount++
+        console.log(`캐릭터 "${character.name}" 동기화 완료`)
       } catch (error) {
-        console.error(`캐릭터 ${character.id} 동기화 실패:`, error)
+        console.error(`캐릭터 ${character.id} (${character.name}) 동기화 실패:`, error)
+        if (error instanceof Error) {
+          console.error('에러 메시지:', error.message)
+        }
       }
     }
+    console.log(`캐릭터 동기화 완료: ${characterSuccessCount}개 성공`)
+  } else {
+    console.warn('캐릭터 데이터베이스 ID가 없습니다.')
   }
 
   // 5. Settings 동기화 (작품에 연결)
   if (dbIds.settings) {
+    console.log(`설정 ${data.settings.length}개 동기화 시작...`)
+    let settingSuccessCount = 0
     for (const setting of data.settings) {
       const workPageId = workPageMap.get(setting.workId)
-      if (!workPageId) continue
+      if (!workPageId) {
+        console.warn(`설정 "${setting.name}"의 작품 ID(${setting.workId})에 해당하는 작품 페이지를 찾을 수 없습니다.`)
+        continue
+      }
       
       try {
         await client.pages.create({
           parent: { database_id: dbIds.settings },
           properties: settingToNotionProperties(setting, workPageId),
         })
+        settingSuccessCount++
+        console.log(`설정 "${setting.name}" 동기화 완료`)
       } catch (error) {
-        console.error(`설정 ${setting.id} 동기화 실패:`, error)
+        console.error(`설정 ${setting.id} (${setting.name}) 동기화 실패:`, error)
+        if (error instanceof Error) {
+          console.error('에러 메시지:', error.message)
+        }
       }
     }
+    console.log(`설정 동기화 완료: ${settingSuccessCount}개 성공`)
+  } else {
+    console.warn('설정 데이터베이스 ID가 없습니다.')
   }
 
   // 6. Episodes 동기화 (작품과 장에 연결)
   if (dbIds.episodes) {
+    console.log(`회차 ${data.episodes.length}개 동기화 시작...`)
+    let episodeSuccessCount = 0
     for (const episode of data.episodes) {
       const workPageId = workPageMap.get(episode.workId)
-      if (!workPageId) continue
+      if (!workPageId) {
+        console.warn(`회차 ${episode.episodeNumber}화의 작품 ID(${episode.workId})에 해당하는 작품 페이지를 찾을 수 없습니다.`)
+        continue
+      }
       
       const chapterPageId = episode.chapterId ? chapterPageMap.get(episode.chapterId) : undefined
       
@@ -651,14 +728,24 @@ export async function syncToNotion(
           parent: { database_id: dbIds.episodes },
           properties: episodeToNotionProperties(episode, workPageId, chapterPageId),
         })
+        episodeSuccessCount++
+        console.log(`회차 ${episode.episodeNumber}화 동기화 완료`)
       } catch (error) {
-        console.error(`회차 ${episode.id} 동기화 실패:`, error)
+        console.error(`회차 ${episode.id} (${episode.episodeNumber}화) 동기화 실패:`, error)
+        if (error instanceof Error) {
+          console.error('에러 메시지:', error.message)
+        }
       }
     }
+    console.log(`회차 동기화 완료: ${episodeSuccessCount}개 성공`)
+  } else {
+    console.warn('회차 데이터베이스 ID가 없습니다.')
   }
 
   // 7. Tags 동기화 (태그는 작품과 직접 연결하지 않음)
   if (dbIds.tags) {
+    console.log(`태그 ${data.tags.length}개 동기화 시작...`)
+    let tagSuccessCount = 0
     for (const tag of data.tags) {
       try {
         await client.pages.create({
@@ -678,11 +765,22 @@ export async function syncToNotion(
             },
           },
         })
+        tagSuccessCount++
+        console.log(`태그 "${tag.name}" 동기화 완료`)
       } catch (error) {
-        console.error(`태그 ${tag.id} 동기화 실패:`, error)
+        console.error(`태그 ${tag.id} (${tag.name}) 동기화 실패:`, error)
+        if (error instanceof Error) {
+          console.error('에러 메시지:', error.message)
+        }
       }
     }
+    console.log(`태그 동기화 완료: ${tagSuccessCount}개 성공`)
+  } else {
+    console.warn('태그 데이터베이스 ID가 없습니다.')
   }
+
+  console.log('노션 동기화 완료!')
+  console.log('작품 페이지를 열면 연결된 시놉시스, 캐릭터, 설정, 장, 회차가 Relation 속성으로 표시됩니다.')
 }
 
 // 노션에서 데이터 가져오기
