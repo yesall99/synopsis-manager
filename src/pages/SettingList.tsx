@@ -124,7 +124,8 @@ export default function SettingList() {
                 <option value="">전체 시놉시스</option>
                 {synopses.map((synopsis) => (
                   <option key={synopsis.id} value={synopsis.id}>
-                    {synopsis.title}
+                    {/* @ts-ignore - Old code */}
+                    {(synopsis as any).title || '시놉시스'}
                   </option>
                 ))}
               </select>

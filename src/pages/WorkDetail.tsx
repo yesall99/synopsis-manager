@@ -23,7 +23,7 @@ import { useSettingStore } from '@/stores/settingStore'
 import { useTagStore } from '@/stores/tagStore'
 import { useEpisodeStore } from '@/stores/episodeStore'
 import { useChapterStore } from '@/stores/chapterStore'
-import SynopsisCard from '@/components/SynopsisCard'
+// import SynopsisCard from '@/components/SynopsisCard' // 사용하지 않음
 import CharacterCard from '@/components/CharacterCard'
 import SettingCard from '@/components/SettingCard'
 import WorkExportDialog from '@/components/WorkExportDialog'

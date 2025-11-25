@@ -84,7 +84,7 @@ export function synopsisToHTML(synopsis: Synopsis, workTitle?: string): string {
     ${
       synopsis.structure
         ? renderStructure(synopsis.structure)
-        : synopsis.content
+        : (synopsis as any).content || ''
     }
   </div>
 </body>

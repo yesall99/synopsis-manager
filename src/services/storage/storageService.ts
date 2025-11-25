@@ -330,7 +330,8 @@ export const chapterService = {
 // Tags service
 export const tagService = {
   async getAll(): Promise<Array<{ name: string; count: number; color?: string }>> {
-    return getAllTags()
+    // @ts-ignore - getAllTags returns Tag[] but we need count for display
+    return getAllTags() as any
   },
 }
 

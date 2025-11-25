@@ -37,7 +37,7 @@ export default function CharacterCard({
   const style = isDraggable
     ? {
         transform: shouldApplyTransform ? CSS.Transform.toString(transform) : undefined,
-        transition: shouldApplyTransform ? undefined : transition, // 드래그 중에는 transition 제거
+        transition: shouldApplyTransform ? undefined : (transition || undefined), // 드래그 중에는 transition 제거
         opacity: isDragging ? 0.5 : 1,
       }
     : {}

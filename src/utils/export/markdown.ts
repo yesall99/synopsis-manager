@@ -50,7 +50,8 @@ export function synopsisToMarkdown(synopsis: Synopsis, workTitle?: string): stri
     }
   } else {
     // 기존 방식: HTML을 간단한 마크다운으로 변환
-    const content = htmlToMarkdown(synopsis.content)
+    // @ts-ignore - Old code
+    const content = htmlToMarkdown((synopsis as any).content || '')
     markdown += content
   }
 

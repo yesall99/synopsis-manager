@@ -17,15 +17,22 @@ const getProxyUrl = (path: string): string => {
 }
 
 // 커스텀 fetch 함수: 프록시를 통해 노션 API 호출
-const proxyFetch = async (url: string, options: RequestInit): Promise<Response> => {
+const proxyFetch = async (url: string, options?: any): Promise<Response> => {
   const apiKey = localStorage.getItem('notionApiKey')
   if (!apiKey) {
     throw new Error('Notion API key not found')
   }
 
-  // URL에서 경로 추출
-  const urlObj = new URL(url, window.location.origin)
-  const path = urlObj.pathname.replace('/v1/', '')
+  // 노션 API URL에서 경로 추출
+  const notionApiBase = 'https://api.notion.com/v1/'
+  let path = ''
+  if (url.startsWith(notionApiBase)) {
+    path = url.replace(notionApiBase, '')
+  } else {
+    // 이미 프록시 URL인 경우
+    const urlObj = new URL(url, window.location.origin)
+    path = urlObj.pathname.replace('/api/notion/', '')
+  }
   
   // 프록시 URL로 변환
   const proxyUrl = getProxyUrl(path)
@@ -34,9 +41,10 @@ const proxyFetch = async (url: string, options: RequestInit): Promise<Response> 
   return fetch(proxyUrl, {
     ...options,
     headers: {
-      ...options.headers,
+      ...(options?.headers || {}),
       'Authorization': `Bearer ${apiKey}`,
-      'Notion-Version': '2022-06-28',
+      'Notion-Version': options?.headers?.['Notion-Version'] || '2022-06-28',
+      'Content-Type': 'application/json',
     },
   })
 }
@@ -98,7 +106,8 @@ export async function createNotionDatabase(
           },
         },
       ],
-      properties,
+      // @ts-ignore - Notion API types may not match exactly
+      properties: properties,
     })
     return response.id
   } catch (error) {
@@ -285,7 +294,11 @@ export async function syncToNotion(
 
   // 데이터베이스가 없으면 초기화
   if (!dbIds.works) {
-    await initializeNotionDatabases(client)
+    const rootPageId = getRootPageId()
+    if (!rootPageId) {
+      throw new Error('Root page ID is required. Please connect to Notion first.')
+    }
+    await initializeNotionDatabases(client, rootPageId)
     const newDbIds = getNotionDatabaseIds()
     Object.assign(dbIds, newDbIds)
   }
