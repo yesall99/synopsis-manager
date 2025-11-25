@@ -200,7 +200,8 @@ async function ensureDatabaseProperties(
 ): Promise<void> {
   try {
     const database = await client.databases.retrieve({ database_id: databaseId })
-    const existingProps = database.properties
+    // @ts-ignore - Notion API types may not match exactly
+    const existingProps = database.properties || {}
     
     // 필요한 속성들이 모두 있는지 확인
     const missingProps: Record<string, any> = {}
@@ -496,7 +497,9 @@ export async function syncToNotion(
           const serialPage = await client.pages.create({
             parent: { page_id: workPage.id },
             properties: {
-              title: [{ text: { content: '연재' } }],
+              title: {
+                title: [{ text: { content: '연재' } }],
+              },
             },
           })
           serialPageMap.set(work.id, serialPage.id)
@@ -531,7 +534,9 @@ export async function syncToNotion(
         await client.pages.create({
           parent: { page_id: workPageId },
           properties: {
-            title: [{ text: { content: '시놉시스' } }],
+            title: {
+              title: [{ text: { content: '시놉시스' } }],
+            },
           },
           children: [
             {
@@ -561,7 +566,9 @@ export async function syncToNotion(
         const charactersPage = await client.pages.create({
           parent: { page_id: workPageId },
           properties: {
-            title: [{ text: { content: '캐릭터' } }],
+            title: {
+              title: [{ text: { content: '캐릭터' } }],
+            },
           },
         })
         
@@ -571,7 +578,9 @@ export async function syncToNotion(
             await client.pages.create({
               parent: { page_id: charactersPage.id },
               properties: {
-                title: [{ text: { content: character.name } }],
+                title: {
+                  title: [{ text: { content: character.name } }],
+                },
               },
               children: [
                 {
@@ -605,7 +614,9 @@ export async function syncToNotion(
         const settingsPage = await client.pages.create({
           parent: { page_id: workPageId },
           properties: {
-            title: [{ text: { content: '설정' } }],
+            title: {
+              title: [{ text: { content: '설정' } }],
+            },
           },
         })
         
@@ -615,7 +626,9 @@ export async function syncToNotion(
             await client.pages.create({
               parent: { page_id: settingsPage.id },
               properties: {
-                title: [{ text: { content: setting.name } }],
+                title: {
+                  title: [{ text: { content: setting.name } }],
+                },
               },
               children: [
                 {
@@ -653,7 +666,9 @@ export async function syncToNotion(
           const chapterPage = await client.pages.create({
             parent: { page_id: serialPageId },
             properties: {
-              title: [{ text: { content: chapter.title } }],
+              title: {
+                title: [{ text: { content: chapter.title } }],
+              },
             },
           })
           chapterPageMap.set(chapter.id, chapterPage.id)
@@ -665,7 +680,9 @@ export async function syncToNotion(
               await client.pages.create({
                 parent: { page_id: chapterPage.id },
                 properties: {
-                  title: [{ text: { content: `제 ${episode.episodeNumber}화${episode.title ? ` - ${episode.title}` : ''}` } }],
+                  title: {
+                    title: [{ text: { content: `제 ${episode.episodeNumber}화${episode.title ? ` - ${episode.title}` : ''}` } }],
+                  },
                 },
                 children: [
                   {
@@ -699,7 +716,9 @@ export async function syncToNotion(
           await client.pages.create({
             parent: { page_id: serialPageId },
             properties: {
-              title: [{ text: { content: `제 ${episode.episodeNumber}화${episode.title ? ` - ${episode.title}` : ''}` } }],
+              title: {
+                title: [{ text: { content: `제 ${episode.episodeNumber}화${episode.title ? ` - ${episode.title}` : ''}` } }],
+              },
             },
             children: [
               {
