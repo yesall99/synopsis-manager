@@ -192,7 +192,45 @@ export async function verifyRootPage(client: Client, pageId: string): Promise<bo
   }
 }
 
-// 초기 데이터베이스 설정
+// 데이터베이스가 이미 존재하는지 확인하고 속성 추가
+async function ensureDatabaseProperties(
+  client: Client,
+  databaseId: string,
+  expectedProperties: Record<string, any>
+): Promise<void> {
+  try {
+    const database = await client.databases.retrieve({ database_id: databaseId })
+    const existingProps = database.properties
+    
+    // 필요한 속성들이 모두 있는지 확인
+    const missingProps: Record<string, any> = {}
+    for (const [propName, propDef] of Object.entries(expectedProperties)) {
+      if (!existingProps[propName]) {
+        missingProps[propName] = propDef
+      }
+    }
+    
+    // 없는 속성 추가
+    if (Object.keys(missingProps).length > 0) {
+      try {
+        // @ts-ignore - Notion API types may not match exactly
+        await client.databases.update({
+          database_id: databaseId,
+          // @ts-ignore
+          properties: missingProps,
+        })
+        console.log(`데이터베이스 ${databaseId}에 속성 추가 완료:`, Object.keys(missingProps))
+      } catch (error) {
+        console.warn(`데이터베이스 ${databaseId}에 속성 추가 실패:`, error)
+      }
+    }
+  } catch (error) {
+    console.error(`데이터베이스 ${databaseId} 확인 실패:`, error)
+    throw error
+  }
+}
+
+// 초기 데이터베이스 설정 (작품 데이터베이스만 생성)
 export async function initializeNotionDatabases(client: Client, rootPageId: string): Promise<NotionDatabaseIds> {
   // 페이지 접근 권한 확인
   const hasAccess = await verifyRootPage(client, rootPageId)
@@ -200,12 +238,33 @@ export async function initializeNotionDatabases(client: Client, rootPageId: stri
     throw new Error('노션 페이지에 접근할 수 없습니다. 통합이 해당 페이지에 연결되어 있는지 확인해주세요.')
   }
 
-  const dbIds: NotionDatabaseIds = {}
-
-  // 1단계: 모든 데이터베이스 생성 (Relation 속성 없이)
+  const dbIds = getNotionDatabaseIds()
   
-  // Works 데이터베이스
-  dbIds.works = await createNotionDatabase(client, rootPageId, '작품', {
+  // 기존 작품 데이터베이스가 있으면 속성 확인 및 추가
+  if (dbIds.works) {
+    console.log('기존 작품 데이터베이스 발견. 속성 확인 중...')
+    try {
+      await ensureDatabaseProperties(client, dbIds.works, {
+        '제목': { title: {} },
+        '카테고리': { rich_text: {} },
+        '태그': { multi_select: { options: [] } },
+        '생성일': { date: {} },
+        '수정일': { date: {} },
+      })
+      
+      console.log('기존 데이터베이스 속성 확인 완료')
+      return dbIds
+    } catch (error) {
+      console.warn('기존 데이터베이스 속성 확인 실패, 새로 생성합니다:', error)
+      // 속성 확인 실패 시 새로 생성
+    }
+  }
+
+  // 기존 데이터베이스가 없거나 속성 확인 실패 시 새로 생성
+  const newDbIds: NotionDatabaseIds = {}
+
+  // Works 데이터베이스만 생성 (하위 페이지는 작품 페이지 내부에 생성)
+  newDbIds.works = await createNotionDatabase(client, rootPageId, '작품', {
     '제목': { title: {} },
     '카테고리': { rich_text: {} },
     '태그': { multi_select: { options: [] } },
@@ -213,153 +272,8 @@ export async function initializeNotionDatabases(client: Client, rootPageId: stri
     '수정일': { date: {} },
   })
 
-  // Synopses 데이터베이스
-  dbIds.synopses = await createNotionDatabase(client, rootPageId, '시놉시스', {
-    '작품': { relation: { database_id: dbIds.works } },
-    '구조': { rich_text: {} },
-    '생성일': { date: {} },
-    '수정일': { date: {} },
-  })
-
-  // Characters 데이터베이스
-  dbIds.characters = await createNotionDatabase(client, rootPageId, '캐릭터', {
-    '이름': { title: {} },
-    '작품': { relation: { database_id: dbIds.works } },
-    '역할': { rich_text: {} },
-    '주연 여부': { checkbox: {} },
-    '설명': { rich_text: {} },
-    '생성일': { date: {} },
-    '수정일': { date: {} },
-  })
-
-  // Settings 데이터베이스
-  dbIds.settings = await createNotionDatabase(client, rootPageId, '설정', {
-    '이름': { title: {} },
-    '작품': { relation: { database_id: dbIds.works } },
-    '유형': { select: { options: [
-      { name: '세계관', color: 'blue' },
-      { name: '장소', color: 'green' },
-      { name: '시간', color: 'orange' },
-      { name: '기타', color: 'gray' },
-    ] } },
-    '설명': { rich_text: {} },
-    '생성일': { date: {} },
-    '수정일': { date: {} },
-  })
-
-  // Chapters 데이터베이스
-  dbIds.chapters = await createNotionDatabase(client, rootPageId, '장', {
-    '제목': { title: {} },
-    '작품': { relation: { database_id: dbIds.works } },
-    '구조 구분': { select: { options: [
-      { name: '기', color: 'blue' },
-      { name: '승', color: 'green' },
-      { name: '전', color: 'orange' },
-      { name: '결', color: 'red' },
-    ] } },
-    '생성일': { date: {} },
-    '수정일': { date: {} },
-  })
-
-  // Episodes 데이터베이스
-  dbIds.episodes = await createNotionDatabase(client, rootPageId, '회차', {
-    '회차 번호': { number: {} },
-    '제목': { title: {} },
-    '작품': { relation: { database_id: dbIds.works } },
-    '장': { relation: { database_id: dbIds.chapters } },
-    '내용': { rich_text: {} },
-    '글자수': { number: {} },
-    '글자수(공백제외)': { number: {} },
-    '선작수': { number: {} },
-    '조회수': { number: {} },
-    '생성일': { date: {} },
-    '수정일': { date: {} },
-  })
-
-  // Tags 데이터베이스 (태그는 작품과 직접 연결하지 않음)
-  dbIds.tags = await createNotionDatabase(client, rootPageId, '태그', {
-    '이름': { title: {} },
-    '카테고리': { rich_text: {} },
-    '생성일': { date: {} },
-    '수정일': { date: {} },
-  })
-
-  // 2단계: Works 데이터베이스에 역관계 속성 추가 (양방향 관계)
-  try {
-    // @ts-ignore - Notion API types may not match exactly
-    await client.databases.update({
-      database_id: dbIds.works,
-      // @ts-ignore
-      properties: {
-        '시놉시스': { 
-          relation: { 
-            database_id: dbIds.synopses,
-            type: 'dual_property',
-            // @ts-ignore - Notion API types
-            dual_property: { synced_property_name: '작품' }
-          } 
-        },
-        '캐릭터': { 
-          relation: { 
-            database_id: dbIds.characters,
-            type: 'dual_property',
-            // @ts-ignore
-            dual_property: { synced_property_name: '작품' }
-          } 
-        },
-        '설정': { 
-          relation: { 
-            database_id: dbIds.settings,
-            type: 'dual_property',
-            // @ts-ignore
-            dual_property: { synced_property_name: '작품' }
-          } 
-        },
-        '장': { 
-          relation: { 
-            database_id: dbIds.chapters,
-            type: 'dual_property',
-            // @ts-ignore
-            dual_property: { synced_property_name: '작품' }
-          } 
-        },
-        '회차': { 
-          relation: { 
-            database_id: dbIds.episodes,
-            type: 'dual_property',
-            // @ts-ignore
-            dual_property: { synced_property_name: '작품' }
-          } 
-        },
-      },
-    })
-  } catch (error) {
-    console.warn('Works 데이터베이스 역관계 속성 추가 실패 (이미 존재할 수 있음):', error)
-  }
-
-  // Chapters 데이터베이스에 회차 역관계 추가
-  try {
-    // @ts-ignore - Notion API types may not match exactly
-    await client.databases.update({
-      database_id: dbIds.chapters,
-      // @ts-ignore
-      properties: {
-        '회차': { 
-          relation: { 
-            database_id: dbIds.episodes,
-            type: 'dual_property',
-            // @ts-ignore
-            dual_property: { synced_property_name: '장' }
-          } 
-        },
-      },
-    })
-  } catch (error) {
-    console.warn('Chapters 데이터베이스 역관계 속성 추가 실패:', error)
-  }
-
-  setNotionDatabaseIds(dbIds)
-  return dbIds
+  setNotionDatabaseIds(newDbIds)
+  return newDbIds
 }
 
 // 데이터를 노션 형식으로 변환
@@ -562,6 +476,7 @@ export async function syncToNotion(
 
   // 작품별로 페이지 ID 매핑 저장
   const workPageMap = new Map<string, string>()
+  const serialPageMap = new Map<string, string>() // 연재 페이지 ID 매핑
   const chapterPageMap = new Map<string, string>()
 
   // 1. Works 동기화
@@ -575,9 +490,22 @@ export async function syncToNotion(
         })
         workPageMap.set(work.id, workPage.id)
         console.log(`작품 "${work.title}" 동기화 완료 (ID: ${workPage.id})`)
+        
+        // 작품 페이지 내부에 연재 페이지 생성
+        try {
+          const serialPage = await client.pages.create({
+            parent: { page_id: workPage.id },
+            properties: {
+              title: [{ text: { content: '연재' } }],
+            },
+          })
+          serialPageMap.set(work.id, serialPage.id)
+          console.log(`작품 "${work.title}"의 연재 페이지 생성 완료`)
+        } catch (error) {
+          console.warn(`작품 "${work.title}"의 연재 페이지 생성 실패:`, error)
+        }
       } catch (error) {
         console.error(`작품 ${work.id} (${work.title}) 동기화 실패:`, error)
-        // 에러 상세 정보 출력
         if (error instanceof Error) {
           console.error('에러 메시지:', error.message)
           console.error('에러 스택:', error.stack)
@@ -587,159 +515,212 @@ export async function syncToNotion(
     console.log(`작품 동기화 완료: ${workPageMap.size}개 성공`)
   } else {
     console.error('작품 데이터베이스 ID가 없습니다.')
+    return
   }
 
-  // 2. Chapters 동기화 (작품에 연결)
-  if (dbIds.chapters) {
-    console.log(`장 ${data.chapters.length}개 동기화 시작...`)
-    let chapterSuccessCount = 0
-    for (const chapter of data.chapters) {
-      const workPageId = workPageMap.get(chapter.workId)
-      if (!workPageId) {
-        console.warn(`장 "${chapter.title}"의 작품 ID(${chapter.workId})에 해당하는 작품 페이지를 찾을 수 없습니다.`)
-        continue
-      }
-      
-      try {
-        const chapterPage = await client.pages.create({
-          parent: { database_id: dbIds.chapters },
-          properties: chapterToNotionProperties(chapter, workPageId),
-        })
-        chapterPageMap.set(chapter.id, chapterPage.id)
-        chapterSuccessCount++
-        console.log(`장 "${chapter.title}" 동기화 완료`)
-      } catch (error) {
-        console.error(`장 ${chapter.id} (${chapter.title}) 동기화 실패:`, error)
-        if (error instanceof Error) {
-          console.error('에러 메시지:', error.message)
-        }
-      }
-    }
-    console.log(`장 동기화 완료: ${chapterSuccessCount}개 성공`)
-  } else {
-    console.warn('장 데이터베이스 ID가 없습니다.')
-  }
+  // 2. 각 작품별로 하위 페이지 생성
+  for (const work of data.works) {
+    const workPageId = workPageMap.get(work.id)
+    if (!workPageId) continue
 
-  // 3. Synopses 동기화 (작품에 연결)
-  if (dbIds.synopses) {
-    console.log(`시놉시스 ${data.synopses.length}개 동기화 시작...`)
-    let synopsisSuccessCount = 0
-    for (const synopsis of data.synopses) {
-      const workPageId = workPageMap.get(synopsis.workId)
-      if (!workPageId) {
-        console.warn(`시놉시스 ${synopsis.id}의 작품 ID(${synopsis.workId})에 해당하는 작품 페이지를 찾을 수 없습니다.`)
-        continue
-      }
-      
+    // 2-1. 시놉시스 페이지 생성 (작품 페이지 하위)
+    const synopsis = data.synopses.find(s => s.workId === work.id)
+    if (synopsis) {
       try {
+        const structureJson = JSON.stringify(synopsis.structure)
         await client.pages.create({
-          parent: { database_id: dbIds.synopses },
-          properties: synopsisToNotionProperties(synopsis, workPageId),
+          parent: { page_id: workPageId },
+          properties: {
+            title: [{ text: { content: '시놉시스' } }],
+          },
+          children: [
+            {
+              object: 'block',
+              type: 'paragraph',
+              paragraph: {
+                rich_text: [
+                  {
+                    type: 'text',
+                    text: { content: structureJson },
+                  },
+                ],
+              },
+            },
+          ],
         })
-        synopsisSuccessCount++
-        console.log(`시놉시스 (작품 ID: ${synopsis.workId}) 동기화 완료`)
+        console.log(`작품 "${work.title}"의 시놉시스 페이지 생성 완료`)
       } catch (error) {
-        console.error(`시놉시스 ${synopsis.id} 동기화 실패:`, error)
-        if (error instanceof Error) {
-          console.error('에러 메시지:', error.message)
-        }
+        console.error(`작품 "${work.title}"의 시놉시스 페이지 생성 실패:`, error)
       }
     }
-    console.log(`시놉시스 동기화 완료: ${synopsisSuccessCount}개 성공`)
-  } else {
-    console.warn('시놉시스 데이터베이스 ID가 없습니다.')
-  }
 
-  // 4. Characters 동기화 (작품에 연결)
-  if (dbIds.characters) {
-    console.log(`캐릭터 ${data.characters.length}개 동기화 시작...`)
-    let characterSuccessCount = 0
-    for (const character of data.characters) {
-      const workPageId = workPageMap.get(character.workId)
-      if (!workPageId) {
-        console.warn(`캐릭터 "${character.name}"의 작품 ID(${character.workId})에 해당하는 작품 페이지를 찾을 수 없습니다.`)
-        continue
-      }
-      
+    // 2-2. 캐릭터 페이지들 생성 (작품 페이지 하위)
+    const characters = data.characters.filter(c => c.workId === work.id)
+    if (characters.length > 0) {
       try {
-        await client.pages.create({
-          parent: { database_id: dbIds.characters },
-          properties: characterToNotionProperties(character, workPageId),
+        const charactersPage = await client.pages.create({
+          parent: { page_id: workPageId },
+          properties: {
+            title: [{ text: { content: '캐릭터' } }],
+          },
         })
-        characterSuccessCount++
-        console.log(`캐릭터 "${character.name}" 동기화 완료`)
-      } catch (error) {
-        console.error(`캐릭터 ${character.id} (${character.name}) 동기화 실패:`, error)
-        if (error instanceof Error) {
-          console.error('에러 메시지:', error.message)
+        
+        // 각 캐릭터를 하위 페이지로 생성
+        for (const character of characters) {
+          try {
+            await client.pages.create({
+              parent: { page_id: charactersPage.id },
+              properties: {
+                title: [{ text: { content: character.name } }],
+              },
+              children: [
+                {
+                  object: 'block',
+                  type: 'paragraph',
+                  paragraph: {
+                    rich_text: [
+                      {
+                        type: 'text',
+                        text: { content: character.description || '' },
+                      },
+                    ],
+                  },
+                },
+              ],
+            })
+          } catch (error) {
+            console.error(`캐릭터 "${character.name}" 페이지 생성 실패:`, error)
+          }
         }
+        console.log(`작품 "${work.title}"의 캐릭터 페이지 생성 완료 (${characters.length}개)`)
+      } catch (error) {
+        console.error(`작품 "${work.title}"의 캐릭터 페이지 생성 실패:`, error)
       }
     }
-    console.log(`캐릭터 동기화 완료: ${characterSuccessCount}개 성공`)
-  } else {
-    console.warn('캐릭터 데이터베이스 ID가 없습니다.')
-  }
 
-  // 5. Settings 동기화 (작품에 연결)
-  if (dbIds.settings) {
-    console.log(`설정 ${data.settings.length}개 동기화 시작...`)
-    let settingSuccessCount = 0
-    for (const setting of data.settings) {
-      const workPageId = workPageMap.get(setting.workId)
-      if (!workPageId) {
-        console.warn(`설정 "${setting.name}"의 작품 ID(${setting.workId})에 해당하는 작품 페이지를 찾을 수 없습니다.`)
-        continue
-      }
-      
+    // 2-3. 설정 페이지들 생성 (작품 페이지 하위)
+    const settings = data.settings.filter(s => s.workId === work.id)
+    if (settings.length > 0) {
       try {
-        await client.pages.create({
-          parent: { database_id: dbIds.settings },
-          properties: settingToNotionProperties(setting, workPageId),
+        const settingsPage = await client.pages.create({
+          parent: { page_id: workPageId },
+          properties: {
+            title: [{ text: { content: '설정' } }],
+          },
         })
-        settingSuccessCount++
-        console.log(`설정 "${setting.name}" 동기화 완료`)
-      } catch (error) {
-        console.error(`설정 ${setting.id} (${setting.name}) 동기화 실패:`, error)
-        if (error instanceof Error) {
-          console.error('에러 메시지:', error.message)
+        
+        // 각 설정을 하위 페이지로 생성
+        for (const setting of settings) {
+          try {
+            await client.pages.create({
+              parent: { page_id: settingsPage.id },
+              properties: {
+                title: [{ text: { content: setting.name } }],
+              },
+              children: [
+                {
+                  object: 'block',
+                  type: 'paragraph',
+                  paragraph: {
+                    rich_text: [
+                      {
+                        type: 'text',
+                        text: { content: setting.description || '' },
+                      },
+                    ],
+                  },
+                },
+              ],
+            })
+          } catch (error) {
+            console.error(`설정 "${setting.name}" 페이지 생성 실패:`, error)
+          }
         }
+        console.log(`작품 "${work.title}"의 설정 페이지 생성 완료 (${settings.length}개)`)
+      } catch (error) {
+        console.error(`작품 "${work.title}"의 설정 페이지 생성 실패:`, error)
       }
     }
-    console.log(`설정 동기화 완료: ${settingSuccessCount}개 성공`)
-  } else {
-    console.warn('설정 데이터베이스 ID가 없습니다.')
-  }
 
-  // 6. Episodes 동기화 (작품과 장에 연결)
-  if (dbIds.episodes) {
-    console.log(`회차 ${data.episodes.length}개 동기화 시작...`)
-    let episodeSuccessCount = 0
-    for (const episode of data.episodes) {
-      const workPageId = workPageMap.get(episode.workId)
-      if (!workPageId) {
-        console.warn(`회차 ${episode.episodeNumber}화의 작품 ID(${episode.workId})에 해당하는 작품 페이지를 찾을 수 없습니다.`)
-        continue
+    // 2-4. 연재 페이지 내부에 장과 회차 생성
+    const serialPageId = serialPageMap.get(work.id)
+    if (serialPageId) {
+      const chapters = data.chapters.filter(c => c.workId === work.id)
+      
+      // 장별로 그룹화하여 생성
+      for (const chapter of chapters) {
+        try {
+          const chapterPage = await client.pages.create({
+            parent: { page_id: serialPageId },
+            properties: {
+              title: [{ text: { content: chapter.title } }],
+            },
+          })
+          chapterPageMap.set(chapter.id, chapterPage.id)
+          
+          // 해당 장의 회차들 생성
+          const episodes = data.episodes.filter(e => e.chapterId === chapter.id)
+          for (const episode of episodes) {
+            try {
+              await client.pages.create({
+                parent: { page_id: chapterPage.id },
+                properties: {
+                  title: [{ text: { content: `제 ${episode.episodeNumber}화${episode.title ? ` - ${episode.title}` : ''}` } }],
+                },
+                children: [
+                  {
+                    object: 'block',
+                    type: 'paragraph',
+                    paragraph: {
+                      rich_text: [
+                        {
+                          type: 'text',
+                          text: { content: episode.content.replace(/<[^>]*>/g, '') || '' },
+                        },
+                      ],
+                    },
+                  },
+                ],
+              })
+            } catch (error) {
+              console.error(`회차 ${episode.episodeNumber}화 페이지 생성 실패:`, error)
+            }
+          }
+          console.log(`장 "${chapter.title}" 및 회차 ${episodes.length}개 생성 완료`)
+        } catch (error) {
+          console.error(`장 "${chapter.title}" 페이지 생성 실패:`, error)
+        }
       }
       
-      const chapterPageId = episode.chapterId ? chapterPageMap.get(episode.chapterId) : undefined
-      
-      try {
-        await client.pages.create({
-          parent: { database_id: dbIds.episodes },
-          properties: episodeToNotionProperties(episode, workPageId, chapterPageId),
-        })
-        episodeSuccessCount++
-        console.log(`회차 ${episode.episodeNumber}화 동기화 완료`)
-      } catch (error) {
-        console.error(`회차 ${episode.id} (${episode.episodeNumber}화) 동기화 실패:`, error)
-        if (error instanceof Error) {
-          console.error('에러 메시지:', error.message)
+      // 장이 없는 회차들도 생성
+      const episodesWithoutChapter = data.episodes.filter(e => e.workId === work.id && !e.chapterId)
+      for (const episode of episodesWithoutChapter) {
+        try {
+          await client.pages.create({
+            parent: { page_id: serialPageId },
+            properties: {
+              title: [{ text: { content: `제 ${episode.episodeNumber}화${episode.title ? ` - ${episode.title}` : ''}` } }],
+            },
+            children: [
+              {
+                object: 'block',
+                type: 'paragraph',
+                paragraph: {
+                  rich_text: [
+                    {
+                      type: 'text',
+                      text: { content: episode.content.replace(/<[^>]*>/g, '') || '' },
+                    },
+                  ],
+                },
+              },
+            ],
+          })
+        } catch (error) {
+          console.error(`회차 ${episode.episodeNumber}화 페이지 생성 실패:`, error)
         }
       }
     }
-    console.log(`회차 동기화 완료: ${episodeSuccessCount}개 성공`)
-  } else {
-    console.warn('회차 데이터베이스 ID가 없습니다.')
   }
 
   // 7. Tags 동기화 (태그는 작품과 직접 연결하지 않음)
