@@ -192,6 +192,22 @@ export async function verifyRootPage(client: Client, pageId: string): Promise<bo
   }
 }
 
+// 데이터베이스가 존재하고 활성화되어 있는지 확인
+async function verifyDatabase(client: Client, databaseId: string): Promise<boolean> {
+  try {
+    const database = await client.databases.retrieve({ database_id: databaseId })
+    // @ts-ignore - Notion API types may not match exactly
+    if (database.archived) {
+      console.warn(`데이터베이스 ${databaseId}가 아카이브되어 있습니다.`)
+      return false
+    }
+    return true
+  } catch (error) {
+    console.warn(`데이터베이스 ${databaseId} 확인 실패 (존재하지 않거나 접근 불가):`, error)
+    return false
+  }
+}
+
 // 데이터베이스가 이미 존재하는지 확인하고 속성 추가
 async function ensureDatabaseProperties(
   client: Client,
@@ -200,6 +216,10 @@ async function ensureDatabaseProperties(
 ): Promise<void> {
   try {
     const database = await client.databases.retrieve({ database_id: databaseId })
+    // @ts-ignore - Notion API types may not match exactly
+    if (database.archived) {
+      throw new Error('데이터베이스가 아카이브되어 있습니다.')
+    }
     // @ts-ignore - Notion API types may not match exactly
     const existingProps = database.properties || {}
     
@@ -223,6 +243,7 @@ async function ensureDatabaseProperties(
         console.log(`데이터베이스 ${databaseId}에 속성 추가 완료:`, Object.keys(missingProps))
       } catch (error) {
         console.warn(`데이터베이스 ${databaseId}에 속성 추가 실패:`, error)
+        throw error
       }
     }
   } catch (error) {
@@ -241,23 +262,31 @@ export async function initializeNotionDatabases(client: Client, rootPageId: stri
 
   const dbIds = getNotionDatabaseIds()
   
-  // 기존 작품 데이터베이스가 있으면 속성 확인 및 추가
+  // 기존 작품 데이터베이스가 있으면 유효성 확인
   if (dbIds.works) {
-    console.log('기존 작품 데이터베이스 발견. 속성 확인 중...')
-    try {
-      await ensureDatabaseProperties(client, dbIds.works, {
-        '제목': { title: {} },
-        '카테고리': { rich_text: {} },
-        '태그': { multi_select: { options: [] } },
-        '생성일': { date: {} },
-        '수정일': { date: {} },
-      })
-      
-      console.log('기존 데이터베이스 속성 확인 완료')
-      return dbIds
-    } catch (error) {
-      console.warn('기존 데이터베이스 속성 확인 실패, 새로 생성합니다:', error)
-      // 속성 확인 실패 시 새로 생성
+    console.log('기존 작품 데이터베이스 발견. 유효성 확인 중...')
+    const isValid = await verifyDatabase(client, dbIds.works)
+    
+    if (isValid) {
+      try {
+        await ensureDatabaseProperties(client, dbIds.works, {
+          '제목': { title: {} },
+          '카테고리': { rich_text: {} },
+          '태그': { multi_select: { options: [] } },
+          '생성일': { date: {} },
+          '수정일': { date: {} },
+        })
+        
+        console.log('기존 데이터베이스 속성 확인 완료')
+        return dbIds
+      } catch (error) {
+        console.warn('기존 데이터베이스 속성 확인 실패, 새로 생성합니다:', error)
+        // 속성 확인 실패 시 새로 생성
+      }
+    } else {
+      console.warn('기존 데이터베이스가 유효하지 않습니다. 새로 생성합니다.')
+      // 유효하지 않은 데이터베이스 ID 제거
+      setNotionDatabaseIds({})
     }
   }
 
