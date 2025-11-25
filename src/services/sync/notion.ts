@@ -286,8 +286,10 @@ export async function initializeNotionDatabases(client: Client, rootPageId: stri
 
   // 2단계: Works 데이터베이스에 역관계 속성 추가 (양방향 관계)
   try {
+    // @ts-ignore - Notion API types may not match exactly
     await client.databases.update({
       database_id: dbIds.works,
+      // @ts-ignore
       properties: {
         '시놉시스': { 
           relation: { 
@@ -337,8 +339,10 @@ export async function initializeNotionDatabases(client: Client, rootPageId: stri
 
   // Chapters 데이터베이스에 회차 역관계 추가
   try {
+    // @ts-ignore - Notion API types may not match exactly
     await client.databases.update({
       database_id: dbIds.chapters,
+      // @ts-ignore
       properties: {
         '회차': { 
           relation: { 
