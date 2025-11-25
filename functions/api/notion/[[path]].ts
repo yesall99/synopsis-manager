@@ -11,7 +11,7 @@
 export async function onRequest(context: {
   request: Request
   env: any
-  params: { path: string[] }
+  params: { path?: string[] }
 }): Promise<Response> {
   const { request, params } = context
   
@@ -47,7 +47,7 @@ export async function onRequest(context: {
     }
 
     // 노션 API 경로 구성
-    const path = params.path.join('/')
+    const path = params.path ? params.path.join('/') : ''
     const notionApiUrl = `https://api.notion.com/v1/${path}`
 
     // 요청 본문 가져오기

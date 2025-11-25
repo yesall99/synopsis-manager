@@ -166,10 +166,9 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         }
         if (data.tags) {
           // @ts-ignore - tagService.getAll() doesn't have create method, using tagStore instead
+          const { useTagStore } = await import('@/stores/tagStore')
           for (const tag of data.tags) {
             // Use tagStore.create instead
-            const tagStoreModule = await import('@/stores/tagStore')
-            const { useTagStore } = tagStoreModule
             await useTagStore.getState().createTag(tag)
           }
         }
@@ -379,21 +378,66 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                               />
                             </div>
                             
-                            <div>
-                              <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">노션 페이지 ID</label>
-                              <input
-                                type="text"
-                                value={notionPageId}
-                                onChange={(e) => setNotionPageId(e.target.value)}
-                                placeholder="페이지 URL에서 복사 (32자 문자열, 하이픈 제외)"
-                                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                              />
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                노션 페이지 URL 예: https://www.notion.so/workspace/32자문자열-32자문자열
-                                <br />
-                                페이지 ID는 하이픈을 제거한 32자 문자열입니다.
-                              </p>
-                            </div>
+                            <button
+                              onClick={async () => {
+                                if (!notionApiKey.trim()) {
+                                  alert('노션 API 키를 입력해주세요.')
+                                  return
+                                }
+                                localStorage.setItem('notionApiKey', notionApiKey.trim())
+                                setIsLoadingPages(true)
+                                setNotionError(null)
+                                try {
+                                  const client = getNotionClient()
+                                  if (!client) {
+                                    throw new Error('노션 클라이언트를 생성할 수 없습니다.')
+                                  }
+                                  const pages = await getAccessiblePages(client)
+                                  setAccessiblePages(pages)
+                                  if (pages.length === 0) {
+                                    setNotionError('접근 가능한 페이지가 없습니다. 통합을 페이지에 연결했는지 확인해주세요.')
+                                  }
+                                } catch (error) {
+                                  console.error('노션 페이지 목록 가져오기 실패:', error)
+                                  setNotionError(error instanceof Error ? error.message : '페이지 목록을 가져오는데 실패했습니다.')
+                                  setAccessiblePages([])
+                                } finally {
+                                  setIsLoadingPages(false)
+                                }
+                              }}
+                              disabled={isLoadingPages || !notionApiKey.trim()}
+                              className="w-full px-4 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                              {isLoadingPages ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  페이지 목록 가져오는 중...
+                                </>
+                              ) : (
+                                <>
+                                  <Cloud className="w-4 h-4" />
+                                  페이지 목록 가져오기
+                                </>
+                              )}
+                            </button>
+
+                            {accessiblePages.length > 0 && (
+                              <div>
+                                <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">동기화에 사용할 페이지 선택</label>
+                                <select
+                                  value={notionPageId}
+                                  onChange={(e) => setNotionPageId(e.target.value)}
+                                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                                >
+                                  <option value="">페이지를 선택하세요</option>
+                                  {accessiblePages.map((page) => (
+                                    <option key={page.id} value={page.id}>
+                                      {page.title}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
 
                             <button
                               onClick={async () => {
@@ -402,7 +446,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                   return
                                 }
                                 if (!notionPageId.trim()) {
-                                  alert('노션 페이지 ID를 입력해주세요.')
+                                  alert('동기화에 사용할 페이지를 선택해주세요.')
                                   return
                                 }
                                 localStorage.setItem('notionApiKey', notionApiKey.trim())
