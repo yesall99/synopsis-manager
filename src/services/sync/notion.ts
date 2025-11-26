@@ -219,17 +219,8 @@ async function updateOrCreatePage(
           }
           // 내용이 같으면 아무것도 하지 않음
         } catch (blockError) {
-          // 블록 확인 실패 시 새 블록 추가 시도
-          if (children.length > 0) {
-            try {
-              await client.blocks.children.append({
-                block_id: pageId,
-                children,
-              })
-            } catch (appendError) {
-              console.warn('블록 추가 실패:', appendError)
-            }
-          }
+          // 블록 확인 실패는 무시 (기존 내용 유지)
+          console.warn('블록 확인 실패, 기존 내용 유지:', blockError)
         }
         
         // 업데이트 성공 - 기존 페이지 ID 반환
@@ -237,12 +228,12 @@ async function updateOrCreatePage(
       }
     } catch (error: any) {
       // 아카이브 오류인 경우에만 새로 생성
-      if (error?.message?.includes('archived')) {
-        console.warn(`아카이브된 페이지입니다. 새로 생성합니다: ${pageId}`)
+      if (error?.message?.includes('archived') || (error as any)?.code === 'object_not_found') {
+        console.warn(`페이지가 아카이브되었거나 찾을 수 없습니다. 새로 생성합니다: ${pageId}`)
         // 아카이브된 경우에만 새로 생성 (기존 ID는 무효화됨)
       } else {
-        // 다른 오류는 로그만 남기고 기존 페이지 ID 유지
-        console.error(`페이지 업데이트 실패, 기존 페이지 ID 유지:`, error)
+        // 다른 오류는 로그만 남기고 기존 페이지 ID 유지 (새로 생성하지 않음)
+        console.warn(`페이지 업데이트 실패, 기존 페이지 ID 유지:`, error)
         return pageId // 기존 페이지 ID 반환 (새로 생성하지 않음)
       }
     }
@@ -1078,16 +1069,17 @@ export async function syncToNotion(
         []
       )
       if (!(existingPageIds as any).charactersPageId) {
-        updateNotionWorkPage(work.id, { workPageId, charactersPageId })
+        updateNotionWorkPage(work.id, { workPageId, charactersPageId: charactersPageId })
       }
       
-      // 각 캐릭터를 하위 페이지로 생성/업데이트
+      // 각 캐릭터를 하위 페이지로 생성/업데이트 (기존 페이지 ID 유지)
       for (const character of characters) {
         try {
+          const existingCharacterPageId = characterPageIds[character.id]
           const characterPageId = await updateOrCreatePage(
             client,
             charactersPageId,
-            characterPageIds[character.id],
+            existingCharacterPageId, // 기존 페이지 ID 사용
             character.name || '이름 없음',
             character.description ? [
               {
@@ -1104,12 +1096,17 @@ export async function syncToNotion(
               },
             ] : []
           )
-          characterPageIds[character.id] = characterPageId
+          // 새로 생성된 경우에만 ID 저장
+          if (!existingCharacterPageId || characterPageId !== existingCharacterPageId) {
+            characterPageIds[character.id] = characterPageId
+          }
         } catch (error) {
           console.error(`캐릭터 "${character.name}" 페이지 동기화 실패:`, error)
         }
       }
-      updateNotionWorkPage(work.id, { workPageId, characterPageIds })
+      // 기존 characterPageIds와 병합하여 저장
+      const finalCharacterPageIds = { ...characterPageIds }
+      updateNotionWorkPage(work.id, { workPageId, characterPageIds: finalCharacterPageIds })
       console.log(`작품 "${work.title}"의 캐릭터 페이지 동기화 완료 (${characters.length}개)`)
     } catch (error) {
       console.error(`작품 "${work.title}"의 캐릭터 페이지 동기화 실패:`, error)
@@ -1126,16 +1123,17 @@ export async function syncToNotion(
         []
       )
       if (!(existingPageIds as any).settingsPageId) {
-        updateNotionWorkPage(work.id, { workPageId, settingsPageId })
+        updateNotionWorkPage(work.id, { workPageId, settingsPageId: settingsPageId })
       }
       
-      // 각 설정을 하위 페이지로 생성/업데이트
+      // 각 설정을 하위 페이지로 생성/업데이트 (기존 페이지 ID 유지)
       for (const setting of settings) {
         try {
+          const existingSettingPageId = settingPageIds[setting.id]
           const settingPageId = await updateOrCreatePage(
             client,
             settingsPageId,
-            settingPageIds[setting.id],
+            existingSettingPageId, // 기존 페이지 ID 사용
             setting.name || '이름 없음',
             setting.description ? [
               {
@@ -1152,12 +1150,17 @@ export async function syncToNotion(
               },
             ] : []
           )
-          settingPageIds[setting.id] = settingPageId
+          // 새로 생성된 경우에만 ID 저장
+          if (!existingSettingPageId || settingPageId !== existingSettingPageId) {
+            settingPageIds[setting.id] = settingPageId
+          }
         } catch (error) {
           console.error(`설정 "${setting.name}" 페이지 동기화 실패:`, error)
         }
       }
-      updateNotionWorkPage(work.id, { workPageId, settingPageIds })
+      // 기존 settingPageIds와 병합하여 저장
+      const finalSettingPageIds = { ...settingPageIds }
+      updateNotionWorkPage(work.id, { workPageId, settingPageIds: finalSettingPageIds })
       console.log(`작품 "${work.title}"의 설정 페이지 동기화 완료 (${settings.length}개)`)
     } catch (error) {
       console.error(`작품 "${work.title}"의 설정 페이지 동기화 실패:`, error)
@@ -1168,27 +1171,32 @@ export async function syncToNotion(
     if (serialPageId) {
       const chapters = data.chapters.filter(c => c.workId === work.id)
       
-      // 장별로 그룹화하여 생성/업데이트
+      // 장별로 그룹화하여 생성/업데이트 (기존 페이지 ID 유지)
       for (const chapter of chapters) {
         try {
+          const existingChapterPageId = chapterPageIds[chapter.id]
           const chapterPageId = await updateOrCreatePage(
             client,
             serialPageId,
-            chapterPageIds[chapter.id],
+            existingChapterPageId, // 기존 페이지 ID 사용
             chapter.title,
             []
           )
-          chapterPageIds[chapter.id] = chapterPageId
+          // 새로 생성된 경우에만 ID 저장
+          if (!existingChapterPageId || chapterPageId !== existingChapterPageId) {
+            chapterPageIds[chapter.id] = chapterPageId
+          }
           chapterPageMap.set(chapter.id, chapterPageId)
           
-          // 해당 장의 회차들 생성/업데이트
+          // 해당 장의 회차들 생성/업데이트 (기존 페이지 ID 유지)
           const episodes = data.episodes.filter(e => e.chapterId === chapter.id)
           for (const episode of episodes) {
             try {
+              const existingEpisodePageId = episodePageIds[episode.id]
               const episodePageId = await updateOrCreatePage(
                 client,
                 chapterPageId,
-                episodePageIds[episode.id],
+                existingEpisodePageId, // 기존 페이지 ID 사용
                 `제 ${episode.episodeNumber}화${episode.title ? ` - ${episode.title}` : ''}`,
                 [
                   {
@@ -1205,7 +1213,10 @@ export async function syncToNotion(
                   },
                 ]
               )
-              episodePageIds[episode.id] = episodePageId
+              // 새로 생성된 경우에만 ID 저장
+              if (!existingEpisodePageId || episodePageId !== existingEpisodePageId) {
+                episodePageIds[episode.id] = episodePageId
+              }
             } catch (error) {
               console.error(`회차 ${episode.episodeNumber}화 페이지 동기화 실패:`, error)
             }
@@ -1216,14 +1227,15 @@ export async function syncToNotion(
         }
       }
       
-      // 장이 없는 회차들도 생성/업데이트
+      // 장이 없는 회차들도 생성/업데이트 (기존 페이지 ID 유지)
       const episodesWithoutChapter = data.episodes.filter(e => e.workId === work.id && !e.chapterId)
       for (const episode of episodesWithoutChapter) {
         try {
+          const existingEpisodePageId = episodePageIds[episode.id]
           const episodePageId = await updateOrCreatePage(
             client,
             serialPageId,
-            episodePageIds[episode.id],
+            existingEpisodePageId, // 기존 페이지 ID 사용
             `제 ${episode.episodeNumber}화${episode.title ? ` - ${episode.title}` : ''}`,
             [
               {
@@ -1240,146 +1252,29 @@ export async function syncToNotion(
               },
             ]
           )
-          episodePageIds[episode.id] = episodePageId
+          // 새로 생성된 경우에만 ID 저장
+          if (!existingEpisodePageId || episodePageId !== existingEpisodePageId) {
+            episodePageIds[episode.id] = episodePageId
+          }
         } catch (error) {
           console.error(`회차 ${episode.episodeNumber}화 페이지 동기화 실패:`, error)
         }
       }
       
-      // 페이지 ID 매핑 저장
+      // 기존 chapterPageIds와 episodePageIds와 병합하여 저장
+      const finalChapterPageIds = { ...chapterPageIds }
+      const finalEpisodePageIds = { ...episodePageIds }
       updateNotionWorkPage(work.id, {
         workPageId,
-        chapterPageIds,
-        episodePageIds,
+        chapterPageIds: finalChapterPageIds,
+        episodePageIds: finalEpisodePageIds,
       })
     }
   }
 
-  // 7. Tags 동기화 (루트 페이지 하위에 "태그" 페이지 생성)
-  // rootPageId와 existingPageMap은 이미 위에서 선언됨
-  const tagsPageIdKey = '__tags_page__'
-  let tagsPageId = existingPageMap[tagsPageIdKey]?.workPageId
-  
-  if (!tagsPageId) {
-    // 태그 페이지가 없으면 생성
-    try {
-      const tagsPage = await client.pages.create({
-        parent: { page_id: rootPageId },
-        properties: {
-          title: {
-            title: [{ text: { content: '태그' } }],
-          },
-        },
-      })
-      tagsPageId = tagsPage.id
-      const map = getNotionWorkPageMap()
-      map.__tags_page__ = { workPageId: tagsPageId, tagPageIds: {} } as any
-      setNotionWorkPageMap(map)
-      console.log('태그 페이지 생성 완료')
-    } catch (error: any) {
-      console.error('태그 페이지 생성 실패:', error)
-      // 부모 페이지가 아카이브되어 있는 경우 등
-      if (error?.message?.includes('archived')) {
-        console.error('부모 페이지가 아카이브되어 있어서 태그 페이지를 생성할 수 없습니다.')
-      }
-      return // 태그 페이지 생성 실패 시 태그 동기화 중단
-    }
-  } else {
-    // 기존 태그 페이지가 아카이브되어 있는지 확인
-    try {
-      const existingTagsPage = await client.pages.retrieve({ page_id: tagsPageId })
-      if ((existingTagsPage as any).archived) {
-        console.warn('태그 페이지가 아카이브되어 있습니다. 새로 생성합니다.')
-        // 아카이브된 페이지는 새로 생성
-        const tagsPage = await client.pages.create({
-          parent: { page_id: rootPageId },
-          properties: {
-            title: {
-              title: [{ text: { content: '태그' } }],
-            },
-          },
-        })
-        tagsPageId = tagsPage.id
-        const map = getNotionWorkPageMap()
-        map.__tags_page__ = { workPageId: tagsPageId, tagPageIds: {} } as any
-        setNotionWorkPageMap(map)
-        console.log('태그 페이지 재생성 완료')
-      }
-    } catch (error) {
-      console.warn('태그 페이지 확인 실패:', error)
-      // 확인 실패해도 계속 진행 (아마도 페이지가 없거나 접근 불가)
-    }
-  }
-  
-  if (data.tags.length > 0) {
-    console.log(`태그 ${data.tags.length}개 동기화 시작...`)
-    let tagSuccessCount = 0
-    
-    // 태그 페이지 ID 매핑 가져오기
-    const tagsPageData = existingPageMap.__tags_page__
-    const tagPageIds: Record<string, string> = tagsPageData?.tagPageIds || {}
-    
-    for (const tag of data.tags) {
-      try {
-        // 태그를 태그 페이지의 하위 페이지로 생성/업데이트
-        const tagPageId = await updateOrCreatePage(
-          client,
-          tagsPageId,
-          tagPageIds[tag.id],
-          tag.name || '이름 없음',
-          [
-            {
-              object: 'block',
-              type: 'paragraph',
-              paragraph: {
-                rich_text: [
-                  { type: 'text', text: { content: `카테고리: ${tag.categoryId || '없음'}` } },
-                ],
-              },
-            },
-            {
-              object: 'block',
-              type: 'paragraph',
-              paragraph: {
-                rich_text: [
-                  { type: 'text', text: { content: `생성일: ${tag.createdAt?.toISOString() || '없음'}` } },
-                ],
-              },
-            },
-            {
-              object: 'block',
-              type: 'paragraph',
-              paragraph: {
-                rich_text: [
-                  { type: 'text', text: { content: `수정일: ${tag.updatedAt?.toISOString() || '없음'}` } },
-                ],
-              },
-            },
-          ]
-        )
-        tagPageIds[tag.id] = tagPageId
-        tagSuccessCount++
-        console.log(`태그 "${tag.name}" 동기화 완료`)
-      } catch (error) {
-        console.error(`태그 ${tag.id} (${tag.name}) 동기화 실패:`, error)
-        if (error instanceof Error) {
-          console.error('에러 메시지:', error.message)
-        }
-      }
-    }
-    
-    // 태그 페이지 ID 매핑 저장
-    const map = getNotionWorkPageMap()
-    if (!map.__tags_page__) {
-      map.__tags_page__ = { workPageId: tagsPageId, tagPageIds: {} } as any
-    }
-    ;(map.__tags_page__ as any).workPageId = tagsPageId
-    ;(map.__tags_page__ as any).tagPageIds = tagPageIds
-    setNotionWorkPageMap(map)
-    console.log(`태그 동기화 완료: ${tagSuccessCount}개 성공`)
-  } else {
-    console.log('동기화할 태그가 없습니다.')
-  }
+  // 7. Tags 동기화는 제거 (태그는 변경되지 않았을 때 동기화하지 않음)
+  // 태그 동기화는 사용자가 명시적으로 요청할 때만 실행하도록 변경
+  console.log('태그 동기화는 건너뜁니다. (태그는 변경되지 않았을 때 동기화하지 않음)')
 
   console.log('노션 동기화 완료!')
   console.log('작품 페이지를 열면 연결된 시놉시스, 캐릭터, 설정, 장, 회차가 Relation 속성으로 표시됩니다.')
