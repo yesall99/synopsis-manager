@@ -237,7 +237,7 @@ export default function CharacterEdit() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="캐릭터 이름을 입력하세요"
-                className="w-full px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                className="w-full px-3 py-2 text-base border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
               />
             ) : (
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{name || '(이름 없음)'}</h2>
@@ -253,7 +253,7 @@ export default function CharacterEdit() {
               <select
                 value={isMainCharacter ? 'main' : 'supporting'}
                 onChange={(e) => setIsMainCharacter(e.target.value === 'main')}
-                className="w-full px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100"
+                className="w-full px-3 py-2 text-base border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100"
               >
                 <option value="supporting">조연</option>
                 <option value="main">주연</option>
@@ -274,7 +274,7 @@ export default function CharacterEdit() {
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
                 placeholder="예: 주인공, 악역, 조력자 등"
-                className="w-full px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                className="w-full px-3 py-2 text-base border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
               />
             ) : (
               <p className="text-base text-gray-900 dark:text-gray-100">{role || '(역할 없음)'}</p>
@@ -293,7 +293,7 @@ export default function CharacterEdit() {
                 onChange={(e) => setAge(e.target.value ? parseInt(e.target.value) : undefined)}
                 placeholder="나이를 입력하세요"
                 min="0"
-                className="w-full px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                className="w-full px-3 py-2 text-base border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
               />
             ) : (
               <p className="text-base text-gray-900 dark:text-gray-100">{age ? `${age}세` : '(나이 없음)'}</p>
@@ -311,7 +311,7 @@ export default function CharacterEdit() {
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="캐릭터에 대한 간단한 설명을 입력하세요"
                 rows={4}
-                className="w-full px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors resize-none bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                className="w-full px-3 py-2 text-base border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors resize-none bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
               />
             ) : (
               <p className="text-base text-gray-900 dark:text-gray-100 whitespace-pre-wrap">{description || '(설명 없음)'}</p>

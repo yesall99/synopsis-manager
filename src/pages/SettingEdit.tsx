@@ -236,7 +236,7 @@ export default function SettingEdit() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="설정 이름을 입력하세요"
-                className="w-full px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                className="w-full px-3 py-2 text-base border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
               />
             ) : (
               <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{name || '(이름 없음)'}</h2>
@@ -252,7 +252,7 @@ export default function SettingEdit() {
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value as SettingType)}
-                className="w-full px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100"
+                className="w-full px-3 py-2 text-base border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100"
               >
                 {settingTypes.map((t) => (
                   <option key={t.value} value={t.value}>
@@ -280,7 +280,7 @@ export default function SettingEdit() {
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="설정에 대한 간단한 설명을 입력하세요"
                 rows={4}
-                className="w-full px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors resize-none bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                className="w-full px-3 py-2 text-base border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors resize-none bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
               />
             ) : (
               <p className="text-base text-gray-900 dark:text-gray-100 whitespace-pre-wrap">{description || '(설명 없음)'}</p>

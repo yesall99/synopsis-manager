@@ -263,7 +263,7 @@ export default function EpisodeEdit() {
                 value={episodeNumber}
                 onChange={(e) => setEpisodeNumber(parseInt(e.target.value) || 1)}
                 min="1"
-                className="w-full px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100"
+                className="w-full px-3 py-2 text-base border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100"
               />
             </div>
 
@@ -273,7 +273,7 @@ export default function EpisodeEdit() {
               <select
                 value={chapterId}
                 onChange={(e) => setChapterId(e.target.value)}
-                className="w-full px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100"
+                className="w-full px-3 py-2 text-base border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100"
               >
                 <option value="">장 없음</option>
                 {chapters
@@ -295,7 +295,7 @@ export default function EpisodeEdit() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="회차 제목을 입력하세요"
-                className="w-full px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                className="w-full px-3 py-2 text-base border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
               />
             </div>
 
@@ -306,7 +306,7 @@ export default function EpisodeEdit() {
                 type="date"
                 value={publishedAt}
                 onChange={(e) => setPublishedAt(e.target.value)}
-                className="w-full px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100"
+                className="w-full px-3 py-2 text-base border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100"
               />
             </div>
 
@@ -322,7 +322,7 @@ export default function EpisodeEdit() {
                       onChange={(e) => setSubscriberCount(e.target.value ? parseInt(e.target.value) : undefined)}
                       min="0"
                       placeholder="선작수"
-                      className="w-full px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                      className="w-full px-3 py-2 text-base border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                     />
                   </div>
                   <div>
@@ -333,7 +333,7 @@ export default function EpisodeEdit() {
                       onChange={(e) => setViewCount(e.target.value ? parseInt(e.target.value) : undefined)}
                       min="0"
                       placeholder="조회수"
-                      className="w-full px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                      className="w-full px-3 py-2 text-base border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                     />
                   </div>
                 </div>

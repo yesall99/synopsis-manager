@@ -90,6 +90,7 @@ body {
 /* Tiptap Editor Styles */
 .ProseMirror {
   outline: none;
+  font-size: 16px; /* 모바일에서 자동 확대 방지 */
 }
 
 .ProseMirror p.is-editor-empty:first-child::before {
