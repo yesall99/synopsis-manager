@@ -1,15 +1,13 @@
 import { useState, useEffect } from 'react'
 import { X, Moon, Sun, Cloud, Download, Upload, Trash2, AlertTriangle, Key, Check, Loader2 } from 'lucide-react'
-import { useSyncStore } from '@/stores/syncStore'
-import { isFirebaseConfigured } from '@/config/firebase'
+import { useThemeStore } from '@/stores/themeStore'
 import { workService } from '@/services/storage/storageService'
 import { synopsisService } from '@/services/storage/storageService'
 import { characterService } from '@/services/storage/storageService'
 import { settingService } from '@/services/storage/storageService'
 import { episodeService } from '@/services/storage/storageService'
 import { chapterService } from '@/services/storage/storageService'
-import { tagService } from '@/services/storage/storageService'
-import { tagCategoryService } from '@/services/storage/tagService'
+import { tagService, tagCategoryService } from '@/services/storage/tagService'
 import { getNotionClient, initializeNotionDatabases, syncToNotion, syncFromNotion, getAccessiblePages, verifyRootPage } from '@/services/sync/notion'
 
 interface SettingsModalProps {
@@ -19,14 +17,9 @@ interface SettingsModalProps {
 
 type SettingsTab = 'general' | 'sync' | 'data'
 
-export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>('general')
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    return localStorage.getItem('theme') === 'dark' || 
-           (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)
-  })
-  const { user, isAuthenticated, signIn, signOut } = useSyncStore()
-  const firebaseConfigured = isFirebaseConfigured()
+  const { theme, toggleTheme } = useThemeStore()
   const [isExporting, setIsExporting] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -46,27 +39,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [isNotionSyncing, setIsNotionSyncing] = useState(false)
   const [notionError, setNotionError] = useState<string | null>(null)
 
-  // 다크모드 토글
-  const toggleDarkMode = () => {
-    const newMode = !isDarkMode
-    setIsDarkMode(newMode)
-    localStorage.setItem('theme', newMode ? 'dark' : 'light')
-    if (newMode) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-  }
-
-  // 초기 다크모드 적용
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-  }, [isDarkMode])
-
   // 데이터 내보내기
   const handleExport = async () => {
     setIsExporting(true)
@@ -78,6 +50,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       const episodes = await episodeService.getAll()
       const chapters = await chapterService.getAll()
       const tags = await tagService.getAll()
+      const tagCategories = await tagCategoryService.getAll()
 
       const data = {
         works,
@@ -87,6 +60,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         episodes,
         chapters,
         tags,
+        tagCategories,
         exportDate: new Date().toISOString(),
       }
 
@@ -129,53 +103,138 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         }
 
         // 모든 데이터 삭제 후 가져오기
-        const works = await workService.getAll()
+        const { 
+          getAllWorks, getAllSynopses, getAllCharacters, getAllSettings, 
+          getAllEpisodes, getAllChapters, getAllTags, getAllTagCategories,
+          deleteWork, deleteSynopsis, deleteCharacter, deleteSetting,
+          deleteEpisode, deleteChapter, deleteTag, deleteTagCategory
+        } = await import('@/services/storage/indexedDB')
+        
+        // 모든 기존 데이터 삭제
+        const works = await getAllWorks()
         for (const work of works) {
-          await workService.delete(work.id)
+          await deleteWork(work.id)
+        }
+        const synopses = await getAllSynopses()
+        for (const synopsis of synopses) {
+          await deleteSynopsis(synopsis.id)
+        }
+        const characters = await getAllCharacters()
+        for (const character of characters) {
+          await deleteCharacter(character.id)
+        }
+        const settings = await getAllSettings()
+        for (const setting of settings) {
+          await deleteSetting(setting.id)
+        }
+        const episodes = await getAllEpisodes()
+        for (const episode of episodes) {
+          await deleteEpisode(episode.id)
+        }
+        const chapters = await getAllChapters()
+        for (const chapter of chapters) {
+          await deleteChapter(chapter.id)
+        }
+        const tags = await getAllTags()
+        for (const tag of tags) {
+          await deleteTag(tag.id)
+        }
+        const tagCategories = await getAllTagCategories()
+        for (const category of tagCategories) {
+          await deleteTagCategory(category.id)
         }
 
-        // 가져온 데이터 추가
-        if (data.works) {
+        // 가져온 데이터 추가 (기존 ID 유지)
+        const { 
+          addWork, addSynopsis, addCharacter, addSetting, 
+          addEpisode, addChapter, addTag, addTagCategory 
+        } = await import('@/services/storage/indexedDB')
+        
+        if (data.works && data.works.length > 0) {
           for (const work of data.works) {
-            await workService.create(work)
+            await addWork(work)
+            console.log(`작품 가져오기: id=${work.id}, title=${work.title}`)
           }
         }
-        if (data.synopses) {
+        if (data.synopses && data.synopses.length > 0) {
           for (const synopsis of data.synopses) {
-            await synopsisService.create(synopsis)
+            await addSynopsis(synopsis)
+            console.log(`시놉시스 가져오기: id=${synopsis.id}, workId=${synopsis.workId}`)
           }
         }
-        if (data.characters) {
+        if (data.characters && data.characters.length > 0) {
           for (const character of data.characters) {
-            await characterService.create(character)
+            await addCharacter(character)
+            console.log(`캐릭터 가져오기: id=${character.id}, workId=${character.workId}`)
           }
         }
-        if (data.settings) {
+        if (data.settings && data.settings.length > 0) {
           for (const setting of data.settings) {
-            await settingService.create(setting)
+            await addSetting(setting)
+            console.log(`설정 가져오기: id=${setting.id}, workId=${setting.workId}`)
           }
         }
-        if (data.episodes) {
+        if (data.episodes && data.episodes.length > 0) {
           for (const episode of data.episodes) {
-            await episodeService.create(episode)
+            await addEpisode(episode)
+            console.log(`회차 가져오기: id=${episode.id}, workId=${episode.workId}`)
           }
         }
-        if (data.chapters) {
+        if (data.chapters && data.chapters.length > 0) {
           for (const chapter of data.chapters) {
-            await chapterService.create(chapter)
+            await addChapter(chapter)
+            console.log(`장 가져오기: id=${chapter.id}, workId=${chapter.workId}`)
           }
         }
-        if (data.tags) {
-          // @ts-ignore - tagService.getAll() doesn't have create method, using tagStore instead
-          const { useTagStore } = await import('@/stores/tagStore')
+        
+        // 태그 카테고리를 먼저 저장
+        if (data.tagCategories && data.tagCategories.length > 0) {
+          for (const category of data.tagCategories) {
+            await addTagCategory(category)
+            console.log(`태그 카테고리 가져오기: id=${category.id}, name=${category.name}`)
+          }
+        }
+        
+        // 태그 카테고리 저장 후 잠시 대기
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
+        // 태그 저장
+        if (data.tags && data.tags.length > 0) {
           for (const tag of data.tags) {
-            // Use tagStore.create instead
-            await useTagStore.getState().createTag(tag)
+            await addTag(tag)
+            console.log(`태그 가져오기: id=${tag.id}, name=${tag.name}, categoryId=${tag.categoryId}`)
           }
         }
 
-        alert('데이터 가져오기가 완료되었습니다. 페이지를 새로고침합니다.')
-        window.location.reload()
+        const summary = `데이터 가져오기가 완료되었습니다.\n작품: ${data.works?.length || 0}개\n시놉시스: ${data.synopses?.length || 0}개\n캐릭터: ${data.characters?.length || 0}개\n설정: ${data.settings?.length || 0}개\n장: ${data.chapters?.length || 0}개\n회차: ${data.episodes?.length || 0}개\n태그: ${data.tags?.length || 0}개\n태그 카테고리: ${data.tagCategories?.length || 0}개`
+        console.log(summary)
+        alert(summary)
+        
+        // Store를 통해 데이터 다시 로드 (새로고침 없이)
+        try {
+          const { useWorkStore } = await import('@/stores/workStore')
+          const { useSynopsisStore } = await import('@/stores/synopsisStore')
+          const { useCharacterStore } = await import('@/stores/characterStore')
+          const { useSettingStore } = await import('@/stores/settingStore')
+          const { useChapterStore } = await import('@/stores/chapterStore')
+          const { useEpisodeStore } = await import('@/stores/episodeStore')
+          const { useTagStore } = await import('@/stores/tagStore')
+          
+          await useWorkStore.getState().loadWorks()
+          await useSynopsisStore.getState().loadSynopses()
+          await useCharacterStore.getState().loadCharacters()
+          await useSettingStore.getState().loadSettings()
+          await useChapterStore.getState().loadChapters()
+          await useEpisodeStore.getState().loadEpisodes()
+          await useTagStore.getState().loadTags()
+          await useTagStore.getState().loadCategories()
+          
+          console.log('모든 데이터 다시 로드 완료')
+        } catch (reloadError) {
+          console.error('데이터 다시 로드 실패:', reloadError)
+          alert('데이터를 다시 로드하는데 실패했습니다. 페이지를 새로고침합니다.')
+          setTimeout(() => window.location.reload(), 2000)
+        }
       } catch (error) {
         console.error('가져오기 실패:', error)
         alert('데이터 가져오기에 실패했습니다. 파일 형식이 올바른지 확인해주세요.')
@@ -197,9 +256,45 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     }
 
     try {
-      const works = await workService.getAll()
+      const { 
+        getAllWorks, getAllSynopses, getAllCharacters, getAllSettings, 
+        getAllEpisodes, getAllChapters, getAllTags, getAllTagCategories,
+        deleteWork, deleteSynopsis, deleteCharacter, deleteSetting,
+        deleteEpisode, deleteChapter, deleteTag, deleteTagCategory
+      } = await import('@/services/storage/indexedDB')
+      
+      // 모든 데이터 삭제
+      const works = await getAllWorks()
       for (const work of works) {
-        await workService.delete(work.id)
+        await deleteWork(work.id)
+      }
+      const synopses = await getAllSynopses()
+      for (const synopsis of synopses) {
+        await deleteSynopsis(synopsis.id)
+      }
+      const characters = await getAllCharacters()
+      for (const character of characters) {
+        await deleteCharacter(character.id)
+      }
+      const settings = await getAllSettings()
+      for (const setting of settings) {
+        await deleteSetting(setting.id)
+      }
+      const episodes = await getAllEpisodes()
+      for (const episode of episodes) {
+        await deleteEpisode(episode.id)
+      }
+      const chapters = await getAllChapters()
+      for (const chapter of chapters) {
+        await deleteChapter(chapter.id)
+      }
+      const tags = await getAllTags()
+      for (const tag of tags) {
+        await deleteTag(tag.id)
+      }
+      const tagCategories = await getAllTagCategories()
+      for (const category of tagCategories) {
+        await deleteTagCategory(category.id)
       }
       
       alert('모든 데이터가 삭제되었습니다. 페이지를 새로고침합니다.')
@@ -219,20 +314,20 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   ]
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50" onClick={onClose}>
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full mx-4 h-[85vh] flex overflow-hidden" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/60" onClick={onClose}>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full mx-4 h-[85vh] md:h-[85vh] flex flex-col md:flex-row overflow-hidden" onClick={(e) => e.stopPropagation()}>
         {/* 왼쪽 사이드바 */}
-        <div className="w-64 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex flex-col">
-          <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">설정</h2>
+        <div className="w-full md:w-56 border-r border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 flex flex-col flex-shrink-0">
+          <div className="p-5 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">설정</h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
-          <nav className="flex-1 p-4 overflow-y-auto">
+          <nav className="flex-1 p-2 overflow-y-auto">
             <ul className="space-y-1">
               {tabs.map((tab) => {
                 const Icon = tab.icon
@@ -241,13 +336,13 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   <li key={tab.id}>
                     <button
                       onClick={() => setActiveTab(tab.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-left ${
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors text-left ${
                         isActive
-                          ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-medium'
-                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                          ? 'text-gray-900 dark:text-gray-100 font-medium'
+                          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
                       }`}
                     >
-                      <Icon className="w-5 h-5" />
+                      <Icon className="w-4 h-4" />
                       <span>{tab.label}</span>
                     </button>
                   </li>
@@ -258,26 +353,26 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         </div>
 
         {/* 오른쪽 콘텐츠 영역 */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-6 space-y-8">
+        <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-800">
+          <div className="p-4 sm:p-6 space-y-6">
             {/* 일반 설정 */}
             {activeTab === 'general' && (
               <div>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">일반 설정</h3>
-                <div className="space-y-6">
-                  <div className="flex items-start justify-between py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">일반 설정</h3>
+                <div className="space-y-4">
+                  <div className="flex items-start justify-between py-4 border-b border-gray-100 dark:border-gray-700">
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">테마 모드</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">테마 모드</p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        내 기기에서 앱의 모습을 마음껏 바꿔보세요.
+                        앱의 테마를 변경할 수 있습니다.
                       </p>
                     </div>
                     <div className="ml-4">
                       <button
-                        onClick={toggleDarkMode}
-                        className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        onClick={toggleTheme}
+                        className="px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                       >
-                        {isDarkMode ? '라이트 모드' : '다크 모드'}
+                        {theme === 'dark' ? '다크 모드' : '라이트 모드'}
                       </button>
                     </div>
                   </div>
@@ -288,71 +383,29 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             {/* 동기화 설정 */}
             {activeTab === 'sync' && (
               <div>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">동기화 설정</h3>
-                <div className="space-y-8">
-                  {/* 구글 동기화 */}
-                  <div>
-                    <h4 className="text-base font-semibold text-gray-900 dark:text-white mb-4">구글 동기화</h4>
-                    <div className="space-y-4">
-                      {firebaseConfigured ? (
-                        <div className="flex items-start justify-between py-4 border-b border-gray-200 dark:border-gray-700">
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">로그인 상태</p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              {isAuthenticated 
-                                ? `현재 ${user?.email || '사용자'}로 로그인되어 있습니다.`
-                                : '구글 계정으로 로그인하여 여러 기기에서 데이터를 동기화할 수 있습니다.'}
-                            </p>
-                          </div>
-                          <div className="ml-4">
-                            {isAuthenticated ? (
-                              <button
-                                onClick={signOut}
-                                className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                              >
-                                로그아웃
-                              </button>
-                            ) : (
-                              <button
-                                onClick={signIn}
-                                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                              >
-                                로그인
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            구글 동기화를 사용하려면 Firebase 설정이 필요합니다. 환경 변수에 Firebase 설정을 추가해주세요.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">동기화 설정</h3>
+                <div className="space-y-6">
                   {/* 노션 동기화 */}
                   <div>
-                    <h4 className="text-base font-semibold text-gray-900 dark:text-white mb-4">노션 동기화</h4>
+                    <h4 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-4">노션 동기화</h4>
                     <div className="space-y-4">
-                      <div className="flex items-start justify-between py-4 border-b border-gray-200 dark:border-gray-700">
+                      <div className="flex items-start justify-between py-4 border-b border-gray-100 dark:border-gray-700">
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">노션 동기화 설정</p>
+                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">노션 동기화 설정</p>
                           <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
                             노션 API 키를 입력하고, 통합을 연결한 페이지를 선택하여 데이터를 동기화할 수 있습니다.
                           </p>
                           
                           {/* 가이드 */}
-                          <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                            <p className="text-xs font-semibold text-blue-900 dark:text-blue-200 mb-2">설정 가이드</p>
-                            <ol className="text-xs text-blue-800 dark:text-blue-300 list-decimal list-inside space-y-1">
+                          <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700">
+                            <p className="text-xs font-medium text-gray-900 dark:text-gray-100 mb-2">설정 가이드</p>
+                            <ol className="text-xs text-gray-600 dark:text-gray-400 list-decimal list-inside space-y-1">
                               <li>
                                 <a
                                   href="https://www.notion.so/profile/integrations"
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="underline hover:text-blue-900 dark:hover:text-blue-200"
+                                  className="underline hover:text-gray-900 dark:hover:text-gray-200"
                                 >
                                   노션 통합 페이지
                                 </a>
@@ -375,7 +428,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                 value={notionApiKey}
                                 onChange={(e) => setNotionApiKey(e.target.value)}
                                 placeholder="secret_..."
-                                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                                className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-gray-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
                               />
                             </div>
                             
@@ -407,7 +460,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                 }
                               }}
                               disabled={isLoadingPages || !notionApiKey.trim()}
-                              className="w-full px-4 py-2 text-sm bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                              className="w-full px-3 py-1.5 text-sm bg-gray-900 text-white rounded hover:bg-gray-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                             >
                               {isLoadingPages ? (
                                 <>
@@ -428,7 +481,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                 <select
                                   value={notionPageId}
                                   onChange={(e) => setNotionPageId(e.target.value)}
-                                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-gray-500 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
                                 >
                                   <option value="">페이지를 선택하세요</option>
                                   {accessiblePages.map((page) => (
@@ -475,7 +528,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                 }
                               }}
                               disabled={isNotionInitializing || !notionApiKey.trim() || !notionPageId.trim()}
-                              className="w-full px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                              className="w-full px-3 py-1.5 text-sm bg-gray-900 dark:bg-gray-700 text-white rounded hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                             >
                               {isNotionInitializing ? (
                                 <>
@@ -491,13 +544,13 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                             </button>
                           </div>
                           {isNotionConnected && (
-                            <div className="mt-2 flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                            <div className="mt-2 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                               <Check className="w-4 h-4" />
                               <span>노션과 연결되었습니다.</span>
                             </div>
                           )}
                           {notionError && (
-                            <div className="mt-2 text-sm text-red-600 dark:text-red-400">
+                            <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
                               {notionError}
                             </div>
                           )}
@@ -505,9 +558,9 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       </div>
                       
                       {isNotionConnected && (
-                        <div className="flex items-start justify-between py-4 border-b border-gray-200 dark:border-gray-700">
+                        <div className="flex items-start justify-between py-4 border-b border-gray-100 dark:border-gray-700">
                           <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">데이터 동기화</p>
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">데이터 동기화</p>
                             <p className="text-sm text-gray-500 dark:text-gray-400">
                               로컬 데이터를 노션으로 업로드하거나 노션에서 데이터를 가져옵니다.
                             </p>
@@ -570,7 +623,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                 }
                               }}
                               disabled={isNotionSyncing}
-                              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                              className="px-3 py-1.5 text-sm bg-gray-900 dark:bg-gray-700 text-white rounded hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 flex items-center gap-2"
                             >
                               {isNotionSyncing ? (
                                 <>
@@ -596,9 +649,116 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                   if (!client) {
                                     throw new Error('노션 클라이언트를 생성할 수 없습니다.')
                                   }
+                                  
                                   const data = await syncFromNotion(client)
-                                  // TODO: 노션에서 가져온 데이터를 로컬에 저장
-                                  alert('노션에서 데이터를 가져왔습니다. (현재는 데이터 가져오기 기능이 구현되지 않았습니다.)')
+                                  
+                                  // 기존 데이터 삭제
+                                  const existingWorks = await workService.getAll()
+                                  for (const work of existingWorks) {
+                                    await workService.delete(work.id)
+                                  }
+                                  
+                                  // 노션에서 가져온 데이터 저장 (이미 ID가 있으므로 직접 IndexedDB에 저장)
+                                  const { addWork, addSynopsis, addCharacter, addSetting, addChapter, addEpisode } = await import('@/services/storage/indexedDB')
+                                  const { addTagCategory, addTag } = await import('@/services/storage/indexedDB')
+                                  
+                                  if (data.works && data.works.length > 0) {
+                                    for (const work of data.works) {
+                                      await addWork(work)
+                                      console.log(`작품 저장: id=${work.id}, title=${work.title}`)
+                                    }
+                                  }
+                                  
+                                  if (data.synopses && data.synopses.length > 0) {
+                                    for (const synopsis of data.synopses) {
+                                      await addSynopsis(synopsis)
+                                      console.log(`시놉시스 저장: id=${synopsis.id}, workId=${synopsis.workId}`)
+                                    }
+                                  }
+                                  
+                                  if (data.characters && data.characters.length > 0) {
+                                    for (const character of data.characters) {
+                                      await addCharacter(character)
+                                      console.log(`캐릭터 저장: id=${character.id}, workId=${character.workId}`)
+                                    }
+                                  }
+                                  
+                                  if (data.settings && data.settings.length > 0) {
+                                    for (const setting of data.settings) {
+                                      await addSetting(setting)
+                                      console.log(`설정 저장: id=${setting.id}, workId=${setting.workId}`)
+                                    }
+                                  }
+                                  
+                                  if (data.chapters && data.chapters.length > 0) {
+                                    for (const chapter of data.chapters) {
+                                      await addChapter(chapter)
+                                      console.log(`장 저장: id=${chapter.id}, workId=${chapter.workId}`)
+                                    }
+                                  }
+                                  
+                                  if (data.episodes && data.episodes.length > 0) {
+                                    for (const episode of data.episodes) {
+                                      await addEpisode(episode)
+                                      console.log(`회차 저장: id=${episode.id}, workId=${episode.workId}`)
+                                    }
+                                  }
+                                  
+                                  // 태그 카테고리를 먼저 저장
+                                  if (data.tagCategories && data.tagCategories.length > 0) {
+                                    for (const category of data.tagCategories) {
+                                      await addTagCategory(category)
+                                      console.log(`태그 카테고리 저장: id=${category.id}, name=${category.name}`)
+                                    }
+                                  }
+                                  
+                                  // 태그 카테고리 저장 후 잠시 대기 (IndexedDB 트랜잭션 완료 대기)
+                                  await new Promise(resolve => setTimeout(resolve, 100))
+                                  
+                                  // 태그 저장
+                                  if (data.tags && data.tags.length > 0) {
+                                    for (const tag of data.tags) {
+                                      try {
+                                        await addTag(tag)
+                                        console.log(`태그 저장 성공: id=${tag.id}, name=${tag.name}, categoryId=${tag.categoryId}`)
+                                      } catch (tagError) {
+                                        console.error(`태그 저장 실패: ${tag.name}`, tagError)
+                                      }
+                                    }
+                                  }
+                                  
+                                  const summary = `노션에서 데이터를 가져왔습니다.\n작품: ${data.works.length}개\n시놉시스: ${data.synopses.length}개\n캐릭터: ${data.characters.length}개\n설정: ${data.settings.length}개\n장: ${data.chapters.length}개\n회차: ${data.episodes.length}개\n태그: ${data.tags.length}개\n태그 카테고리: ${data.tagCategories?.length || 0}개`
+                                  console.log(summary)
+                                  console.log('가져온 데이터:', data)
+                                  
+                                  alert(summary + '\n\n콘솔에서 상세 로그를 확인할 수 있습니다.')
+                                  
+                                  // Store를 통해 데이터 다시 로드 (새로고침 없이)
+                                  try {
+                                    const { useWorkStore } = await import('@/stores/workStore')
+                                    const { useSynopsisStore } = await import('@/stores/synopsisStore')
+                                    const { useCharacterStore } = await import('@/stores/characterStore')
+                                    const { useSettingStore } = await import('@/stores/settingStore')
+                                    const { useChapterStore } = await import('@/stores/chapterStore')
+                                    const { useEpisodeStore } = await import('@/stores/episodeStore')
+                                    const { useTagStore } = await import('@/stores/tagStore')
+                                    
+                                    await useWorkStore.getState().loadWorks()
+                                    await useSynopsisStore.getState().loadSynopses()
+                                    await useCharacterStore.getState().loadCharacters()
+                                    await useSettingStore.getState().loadSettings()
+                                    await useChapterStore.getState().loadChapters()
+                                    await useEpisodeStore.getState().loadEpisodes()
+                                    await useTagStore.getState().loadTags()
+                                    await useTagStore.getState().loadCategories()
+                                    
+                                    console.log('모든 데이터 다시 로드 완료')
+                                  } catch (reloadError) {
+                                    console.error('데이터 다시 로드 실패:', reloadError)
+                                    // 재로드 실패 시에만 새로고침
+                                    alert('데이터를 다시 로드하는데 실패했습니다. 페이지를 새로고침합니다.')
+                                    setTimeout(() => window.location.reload(), 2000)
+                                  }
                                 } catch (error) {
                                   console.error('노션에서 가져오기 실패:', error)
                                   setNotionError(error instanceof Error ? error.message : '노션에서 데이터를 가져오는데 실패했습니다.')
@@ -607,7 +767,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                 }
                               }}
                               disabled={isNotionSyncing}
-                              className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                              className="px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-2"
                             >
                               {isNotionSyncing ? (
                                 <>
@@ -634,11 +794,11 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             {/* 데이터 관리 */}
             {activeTab === 'data' && (
               <div>
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">데이터 관리</h3>
-                <div className="space-y-6">
-                  <div className="flex items-start justify-between py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6">데이터 관리</h3>
+                <div className="space-y-4">
+                  <div className="flex items-start justify-between py-4 border-b border-gray-100 dark:border-gray-700">
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">데이터 내보내기</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">데이터 내보내기</p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
                         모든 작품, 시놉시스, 캐릭터, 설정, 회차 데이터를 JSON 파일로 내보냅니다.
                       </p>
@@ -647,7 +807,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       <button
                         onClick={handleExport}
                         disabled={isExporting}
-                        className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                        className="px-3 py-1.5 text-sm bg-gray-900 dark:bg-gray-700 text-white rounded hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 flex items-center gap-2"
                       >
                         <Download className="w-4 h-4" />
                         {isExporting ? '내보내는 중...' : '내보내기'}
@@ -655,9 +815,9 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     </div>
                   </div>
                   
-                  <div className="flex items-start justify-between py-4 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex items-start justify-between py-4 border-b border-gray-100 dark:border-gray-700">
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">데이터 가져오기</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">데이터 가져오기</p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
                         이전에 내보낸 JSON 파일에서 데이터를 복원합니다. 기존 데이터는 모두 삭제됩니다.
                       </p>
@@ -666,7 +826,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       <button
                         onClick={handleImport}
                         disabled={isImporting}
-                        className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                        className="px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-2"
                       >
                         <Upload className="w-4 h-4" />
                         {isImporting ? '가져오는 중...' : '가져오기'}
@@ -676,7 +836,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   
                   <div className="flex items-start justify-between py-4">
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-red-600 dark:text-red-400 mb-1">모든 데이터 삭제</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">모든 데이터 삭제</p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
                         저장된 모든 데이터를 영구적으로 삭제합니다. 이 작업은 되돌릴 수 없습니다.
                       </p>
@@ -684,7 +844,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     <div className="ml-4">
                       <button
                         onClick={handleDeleteAll}
-                        className="px-4 py-2 text-sm border border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2"
+                        className="px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
                       >
                         <Trash2 className="w-4 h-4" />
                         삭제
@@ -701,3 +861,4 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   )
 }
 
+export default SettingsModal

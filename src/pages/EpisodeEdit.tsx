@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Save, ArrowLeft, Trash2, Loader2 } from 'lucide-react'
+import { Save, ArrowLeft, Trash2, Loader2, Edit2 } from 'lucide-react'
 import { useEpisodeStore } from '@/stores/episodeStore'
 import { useChapterStore } from '@/stores/chapterStore'
 import { syncToNotionInBackground } from '@/utils/notionSync'
@@ -189,20 +189,20 @@ export default function EpisodeEdit() {
 
   if (isLoading) {
     return (
-      <div className="p-8 flex justify-center items-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="p-8 flex justify-center items-center bg-white dark:bg-gray-900">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
       </div>
     )
   }
 
   if (error && !isNew) {
     return (
-      <div className="p-8">
-        <div className="max-w-5xl mx-auto bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-700">{error}</p>
+      <div className="p-8 bg-white dark:bg-gray-900">
+        <div className="max-w-4xl mx-auto bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <p className="text-red-700 dark:text-red-400">{error}</p>
           <button
             onClick={() => navigate(`/works/${workId}`, { state: { tab: 'episodes' } })}
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            className="mt-4 px-4 py-2 bg-red-600 dark:bg-red-700 text-white rounded-lg hover:bg-red-700 dark:hover:bg-red-800"
           >
             돌아가기
           </button>
@@ -212,33 +212,26 @@ export default function EpisodeEdit() {
   }
 
   return (
-    <div className="p-8">
-      <div className="max-w-5xl mx-auto">
+    <div className="p-6 sm:p-6 md:p-8 bg-white dark:bg-gray-900">
+      <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <button
-            onClick={() => navigate(`/works/${workId}`, { state: { tab: 'episodes' } })}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            작품으로 돌아가기
-          </button>
-          <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold text-gray-900">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 break-words">
               {isNew ? '새 회차' : (isNew || isEditing) ? '회차 편집' : `제 ${episodeNumber}화: ${title || '(제목 없음)'}`}
             </h1>
             {!isNew && !(isNew || isEditing) && (
               <div className="flex gap-2">
                 <button
                   onClick={startEdit}
-                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-900 dark:bg-gray-700 text-white hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors"
                 >
-                  <Save className="w-4 h-4" />
+                  <Edit2 className="w-4 h-4" />
                   편집
                 </button>
                 <button
                   onClick={handleDelete}
-                  className="flex items-center gap-2 px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />
                   삭제
@@ -253,23 +246,23 @@ export default function EpisodeEdit() {
           <div className="space-y-6">
             {/* Episode Number */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">회차 번호</label>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-3">회차 번호</label>
               <input
                 type="number"
                 value={episodeNumber}
                 onChange={(e) => setEpisodeNumber(parseInt(e.target.value) || 1)}
                 min="1"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100"
               />
             </div>
 
             {/* Chapter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">장</label>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-3">장</label>
               <select
                 value={chapterId}
                 onChange={(e) => setChapterId(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100"
               >
                 <option value="">장 없음</option>
                 {chapters
@@ -285,58 +278,60 @@ export default function EpisodeEdit() {
 
             {/* Title */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">회차 제목</label>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-3">회차 제목</label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="회차 제목을 입력하세요"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
               />
             </div>
 
             {/* Published Date */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">발행일</label>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-3">발행일</label>
               <input
                 type="date"
                 value={publishedAt}
                 onChange={(e) => setPublishedAt(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100"
               />
             </div>
 
             {/* Subscriber Count & View Count - 다음 회차가 없을 때만 입력 가능 */}
             {canEditStats && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">선작수 (작품 전체)</label>
-                  <input
-                    type="number"
-                    value={subscriberCount ?? ''}
-                    onChange={(e) => setSubscriberCount(e.target.value ? parseInt(e.target.value) : undefined)}
-                    min="0"
-                    placeholder="선작수"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">조회수 (회차별)</label>
-                  <input
-                    type="number"
-                    value={viewCount ?? ''}
-                    onChange={(e) => setViewCount(e.target.value ? parseInt(e.target.value) : undefined)}
-                    min="0"
-                    placeholder="조회수"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+              <div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-3">선작수 (작품 전체)</label>
+                    <input
+                      type="number"
+                      value={subscriberCount ?? ''}
+                      onChange={(e) => setSubscriberCount(e.target.value ? parseInt(e.target.value) : undefined)}
+                      min="0"
+                      placeholder="선작수"
+                      className="w-full px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-3">조회수 (회차별)</label>
+                    <input
+                      type="number"
+                      value={viewCount ?? ''}
+                      onChange={(e) => setViewCount(e.target.value ? parseInt(e.target.value) : undefined)}
+                      min="0"
+                      placeholder="조회수"
+                      className="w-full px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                    />
+                  </div>
                 </div>
               </div>
             )}
 
             {/* Content */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">내용</label>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-3">내용</label>
               <SynopsisEditor content={content} onChange={setContent} placeholder="회차 내용을 작성하세요..." />
             </div>
 
@@ -345,7 +340,7 @@ export default function EpisodeEdit() {
               {!isNew && (
                 <button
                   onClick={cancelEdit}
-                  className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
                 >
                   취소
                 </button>
@@ -353,7 +348,7 @@ export default function EpisodeEdit() {
               <button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                className="px-3 py-1.5 text-sm bg-gray-900 dark:bg-gray-700 text-white hover:bg-gray-800 dark:hover:bg-gray-600 disabled:opacity-50 flex items-center gap-1.5 transition-colors"
               >
                 {isSaving ? (
                   <>
@@ -373,8 +368,8 @@ export default function EpisodeEdit() {
           <div className="space-y-6">
             {/* Episode Number */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">회차 번호</label>
-              <p className="text-gray-900">제 {episodeNumber}화</p>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-3">회차 번호</label>
+              <p className="text-base text-gray-900 dark:text-gray-100">제 {episodeNumber}화</p>
             </div>
 
             {/* Chapter */}
@@ -382,60 +377,62 @@ export default function EpisodeEdit() {
               const chapter = chapters.find((c) => c.id === chapterId)
               return chapter ? (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">장</label>
-                  <p className="text-gray-900">{chapter.title}</p>
+                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-3">장</label>
+                  <p className="text-base text-gray-900 dark:text-gray-100">{chapter.title}</p>
                 </div>
               ) : null
             })()}
 
             {/* Title */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">회차 제목</label>
-              <p className="text-gray-900">{title || '(제목 없음)'}</p>
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-3">회차 제목</label>
+              <p className="text-base text-gray-900 dark:text-gray-100">{title || '(제목 없음)'}</p>
             </div>
 
             {/* Published Date */}
             {publishedAt && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">발행일</label>
-                <p className="text-gray-900">{new Date(publishedAt).toLocaleDateString('ko-KR')}</p>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-3">발행일</label>
+                <p className="text-base text-gray-900 dark:text-gray-100">{new Date(publishedAt).toLocaleDateString('ko-KR')}</p>
               </div>
             )}
 
             {/* Subscriber Count & View Count */}
             {(subscriberCount !== undefined || viewCount !== undefined) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {subscriberCount !== undefined && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">선작수 (작품 전체)</label>
-                    <p className="text-gray-900">{subscriberCount.toLocaleString()}</p>
-                  </div>
-                )}
-                {viewCount !== undefined && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">조회수 (회차별)</label>
-                    <p className="text-gray-900">{viewCount.toLocaleString()}</p>
-                  </div>
-                )}
+              <div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {subscriberCount !== undefined && (
+                    <div>
+                      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-3">선작수 (작품 전체)</label>
+                      <p className="text-base text-gray-900 dark:text-gray-100">{subscriberCount.toLocaleString()}</p>
+                    </div>
+                  )}
+                  {viewCount !== undefined && (
+                    <div>
+                      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-3">조회수 (회차별)</label>
+                      <p className="text-base text-gray-900 dark:text-gray-100">{viewCount.toLocaleString()}</p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
             {/* Word Count */}
             {currentEpisode?.wordCount && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">글자 수</label>
-                <p className="text-gray-900">{currentEpisode.wordCount.toLocaleString()}자</p>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-3">글자 수</label>
+                <p className="text-base text-gray-900 dark:text-gray-100">{currentEpisode.wordCount.toLocaleString()}자</p>
               </div>
             )}
 
             {/* Content */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">내용</label>
-              <div className="prose prose-sm max-w-none bg-white border border-gray-200 rounded-lg p-6 min-h-[400px]">
+              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-3">내용</label>
+              <div className="prose prose-sm max-w-none bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-6 min-h-[400px]">
                 {content ? (
                   <div dangerouslySetInnerHTML={{ __html: content }} />
                 ) : (
-                  <p className="text-gray-400 italic">내용이 없습니다.</p>
+                  <p className="text-sm text-gray-400 dark:text-gray-500 text-center">내용이 없습니다.</p>
                 )}
               </div>
             </div>

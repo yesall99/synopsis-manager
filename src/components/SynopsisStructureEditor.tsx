@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Plus, Trash2, GripVertical, Edit2, Save, X } from 'lucide-react'
 import {
   DndContext,
@@ -63,6 +63,8 @@ function SortableSectionItem({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging, over } = useSortable({
     id: section.id,
   })
+  const titleInputRef = useRef<HTMLInputElement>(null)
+  const wasEditingRef = useRef(false)
 
   // 드래그 중일 때만 transform 적용 (드래그 중이 아닌 항목은 transform 비활성화)
   const shouldApplyTransform = isDragging || (activeId && activeId === section.id)
@@ -76,12 +78,25 @@ function SortableSectionItem({
   // 같은 섹션 내에서만 드롭 인디케이터 표시
   const showDropIndicator = over && over.id === section.id && !isDragging
 
+  // 편집 모드일 때 포커스 유지
+  useEffect(() => {
+    if (isEditing && titleInputRef.current) {
+      // 리렌더링 후에도 포커스 유지
+      const timer = setTimeout(() => {
+        if (titleInputRef.current && document.activeElement !== titleInputRef.current) {
+          titleInputRef.current.focus()
+        }
+      }, 0)
+      return () => clearTimeout(timer)
+    }
+  }, [isEditing, edit.title])
+
   return (
     <>
       {showDropIndicator && (
-        <div className="h-1 bg-blue-500 rounded-full my-2 mx-4" />
+        <div className="h-0.5 bg-gray-300 dark:bg-gray-600 rounded-full my-2 mx-4" />
       )}
-      <div ref={setNodeRef} style={style} className="bg-white border border-gray-200 rounded-lg p-4">
+      <div ref={setNodeRef} style={style} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
         {isEditing ? (
           <>
             <div className="flex items-start gap-3 mb-3">
@@ -89,35 +104,47 @@ function SortableSectionItem({
                 <div
                   {...attributes}
                   {...listeners}
-                  className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
+                  className="cursor-grab active:cursor-grabbing text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400"
                 >
                   <GripVertical className="w-5 h-5" />
                 </div>
                 <input
+                  key={`title-input-${section.id}`}
+                  ref={titleInputRef}
                   type="text"
                   value={edit.title}
-                  onChange={(e) => onUpdateEditData(section.id, 'title', e.target.value)}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium"
+                  onChange={(e) => {
+                    const newValue = e.target.value
+                    onUpdateEditData(section.id, 'title', newValue)
+                  }}
+                  onBlur={(e) => {
+                    // 포커스가 다른 input이나 편집 가능한 요소로 이동하는 경우에만 blur 처리
+                    const relatedTarget = e.relatedTarget as HTMLElement
+                    if (relatedTarget && (relatedTarget.tagName === 'INPUT' || relatedTarget.tagName === 'TEXTAREA' || relatedTarget.isContentEditable)) {
+                      return
+                    }
+                  }}
+                  className="flex-1 px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent font-medium text-gray-900 dark:text-gray-100"
                 />
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => onSaveEdit(sectionType, section.id)}
-                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
                   title="저장"
                 >
                   <Save className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => onCancelEdit(section.id)}
-                  className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                  className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
                   title="취소"
                 >
                   <X className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => onRemove(sectionType, section.id)}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
                   title="삭제"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -139,23 +166,23 @@ function SortableSectionItem({
                 <div
                   {...attributes}
                   {...listeners}
-                  className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
+                  className="cursor-grab active:cursor-grabbing text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400"
                 >
                   <GripVertical className="w-5 h-5" />
                 </div>
-                <h4 className="flex-1 text-sm font-semibold text-gray-900">{section.title}</h4>
+                <h4 className="flex-1 text-sm font-semibold text-gray-900 dark:text-gray-100">{section.title}</h4>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => onStartEdit(section)}
-                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
                   title="편집"
                 >
                   <Edit2 className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => onRemove(sectionType, section.id)}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
                   title="삭제"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -165,11 +192,11 @@ function SortableSectionItem({
             <div className="ml-8">
               {section.content ? (
                 <div
-                  className="prose prose-sm max-w-none text-gray-700"
+                  className="prose prose-sm max-w-none text-gray-700 dark:text-gray-300"
                   dangerouslySetInnerHTML={{ __html: section.content }}
                 />
               ) : (
-                <p className="text-gray-400 text-sm italic">내용이 없습니다.</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500 text-center">내용이 없습니다.</p>
               )}
             </div>
           </>
@@ -194,12 +221,12 @@ function EmptySectionDropZone({
   return (
     <div
       ref={setNodeRef}
-      className={`text-center py-8 text-gray-500 text-sm transition-colors ${
-        isOver ? 'bg-blue-50 border-2 border-blue-300 border-dashed rounded-lg' : ''
+      className={`text-center py-8 text-sm text-gray-400 dark:text-gray-500 transition-colors ${
+        isOver ? 'bg-gray-100 dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-lg' : ''
       }`}
     >
       {isOver ? (
-        <p className="text-blue-600 font-medium">여기에 드롭하세요</p>
+        <p className="text-gray-700 dark:text-gray-300 font-medium">여기에 드롭하세요</p>
       ) : (
         <p>{label} 항목이 없습니다. 추가 버튼을 클릭하거나 다른 섹션에서 드래그하여 추가하세요.</p>
       )}
@@ -415,15 +442,18 @@ export default function SynopsisStructureEditor({
     cancelEdit(id)
   }
 
-  const updateEditData = (id: string, field: 'title' | 'content', value: string) => {
-    setEditData({
-      ...editData,
-      [id]: {
-        ...editData[id],
-        [field]: value,
-      },
+  const updateEditData = useCallback((id: string, field: 'title' | 'content', value: string) => {
+    setEditData((prev) => {
+      const current = prev[id] || { title: '', content: '' }
+      return {
+        ...prev,
+        [id]: {
+          ...current,
+          [field]: value,
+        },
+      }
     })
-  }
+  }, [])
 
   // 섹션 컴포넌트
   const SectionContainer = ({
@@ -460,15 +490,15 @@ export default function SynopsisStructureEditor({
     return (
       <div
         ref={setNodeRef}
-        className={`border rounded-lg p-4 transition-colors ${
-          isOver ? 'border-blue-400 bg-blue-50 border-2 border-dashed' : 'border-gray-200 bg-gray-50'
+        className={`border border-gray-200 dark:border-gray-700 rounded-lg p-4 transition-colors ${
+          isOver ? 'border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 border-2 border-dashed' : 'bg-gray-50 dark:bg-gray-800'
         }`}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">{label}</h3>
+          <h3 className="text-base font-medium text-gray-900 dark:text-gray-100">{label}</h3>
           <button
             onClick={() => onAddSection(type)}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-900 dark:bg-gray-700 text-white hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors"
           >
             <Plus className="w-4 h-4" />
             추가
@@ -476,8 +506,8 @@ export default function SynopsisStructureEditor({
         </div>
 
         {isOver && sections.length > 0 && (
-          <div className="mb-4 text-center py-2 bg-blue-100 border border-blue-300 rounded-lg">
-            <p className="text-blue-700 font-medium text-sm">여기에 드롭하세요</p>
+          <div className="mb-4 text-center py-2 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg">
+            <p className="text-gray-700 dark:text-gray-300 font-medium text-sm">여기에 드롭하세요</p>
           </div>
         )}
 

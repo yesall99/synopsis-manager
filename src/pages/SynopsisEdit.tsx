@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Save, ArrowLeft, Loader2, X } from 'lucide-react'
 import { useSynopsisStore } from '@/stores/synopsisStore'
@@ -10,6 +10,7 @@ export default function SynopsisEdit() {
   const { workId, id } = useParams<{ workId: string; id: string }>()
   const navigate = useNavigate()
   const isNew = id === 'new'
+  const hasInitialized = useRef(false)
   
   const {
     currentSynopsis,
@@ -39,16 +40,20 @@ export default function SynopsisEdit() {
       clearCurrentSynopsis()
       setStructure({ gi: [], seung: [], jeon: [], gyeol: [] })
       setIsEditing(true) // 새 항목은 바로 편집 모드
+      hasInitialized.current = true
     } else if (id) {
       loadSynopsis(id)
       setIsEditing(true) // 항상 편집 모드로 시작
+      hasInitialized.current = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, workId, isNew, navigate])
 
   useEffect(() => {
-    if (currentSynopsis && !isNew) {
+    if (currentSynopsis && !isNew && !hasInitialized.current) {
+      // 초기 로드 시에만 구조 설정
       setStructure(currentSynopsis.structure || { gi: [], seung: [], jeon: [], gyeol: [] })
+      hasInitialized.current = true
     }
   }, [currentSynopsis, isNew])
 
@@ -87,20 +92,20 @@ export default function SynopsisEdit() {
   // 새 항목이 아니고 데이터가 없을 때만 로딩 표시
   if (!isNew && isLoading && !currentSynopsis) {
     return (
-      <div className="p-8 flex justify-center items-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="p-8 flex justify-center items-center bg-white dark:bg-gray-900">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
       </div>
     )
   }
 
   if (error && !isNew) {
     return (
-      <div className="p-8">
-        <div className="max-w-5xl mx-auto bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-700">{error}</p>
+      <div className="p-8 bg-white dark:bg-gray-900">
+        <div className="max-w-4xl mx-auto bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <p className="text-red-700 dark:text-red-400">{error}</p>
           <button
             onClick={() => navigate(`/works/${workId}`)}
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            className="mt-4 px-4 py-2 bg-red-600 dark:bg-red-700 text-white rounded-lg hover:bg-red-700 dark:hover:bg-red-800"
           >
             작품으로 돌아가기
           </button>
@@ -110,21 +115,14 @@ export default function SynopsisEdit() {
   }
 
   return (
-    <div className="p-8">
-      <div className="max-w-5xl mx-auto">
+    <div className="p-6 sm:p-6 md:p-8 bg-white dark:bg-gray-900">
+      <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <button
-            onClick={() => navigate(`/works/${workId}`)}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            작품으로
-          </button>
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end mb-6">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => navigate(`/works/${workId}`)}
-              className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
             >
               <X className="w-4 h-4" />
               취소
@@ -132,7 +130,7 @@ export default function SynopsisEdit() {
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-900 dark:bg-gray-700 text-white hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
             >
               {isSaving ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -145,10 +143,10 @@ export default function SynopsisEdit() {
         </div>
 
         {/* Form */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-6">
+        <div className="space-y-6">
           {/* Structure Editor */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               기/승/전/결 구조
             </label>
             <SynopsisStructureEditor structure={structure} onChange={setStructure} />

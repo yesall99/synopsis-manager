@@ -369,7 +369,7 @@ export async function addEpisode(episode: Episode): Promise<void> {
 
 export async function updateEpisode(episode: Episode): Promise<void> {
   const db = await getDB()
-  await db.put('episodes', episode)
+  await db.put('episodes', { ...episode, updatedAt: new Date(), isDirty: true })
 }
 
 export async function deleteEpisode(id: string): Promise<void> {

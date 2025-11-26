@@ -88,35 +88,26 @@ export default function TagManagement() {
 
   if (isLoading) {
     return (
-      <div className="p-8 flex justify-center items-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="p-8 flex justify-center items-center bg-white dark:bg-gray-900">
+        <Loader2 className="w-6 h-6 animate-spin text-gray-400 dark:text-gray-500" />
       </div>
     )
   }
 
   return (
-    <div className="p-8">
-      <div className="max-w-5xl mx-auto">
+    <div className="p-6 sm:p-6 md:p-8 bg-white dark:bg-gray-900">
+      <div className="max-w-4xl mx-auto">
         <div className="mb-6">
-          <button
-            onClick={() => navigate('/works')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            작품 목록으로
-          </button>
-          <h1 className="text-3xl font-bold text-gray-900">태그 관리</h1>
-          <p className="text-gray-500 mt-1">태그를 관리하세요</p>
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">태그 관리</h1>
         </div>
 
         {/* 새 카테고리 추가 */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">태그</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 sm:p-6 mb-6">
+          <div className="flex items-center justify-end mb-4">
             {!isNewCategory ? (
               <button
                 onClick={() => setIsNewCategory(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-900 dark:bg-gray-700 text-white hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 새 카테고리 추가
@@ -128,7 +119,7 @@ export default function TagManagement() {
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
                   placeholder="카테고리 이름 (예: 장르, 관계)"
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3 py-1.5 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                   autoFocus
                   onKeyPress={(e) => {
                     if (e.key === 'Enter') {
@@ -138,7 +129,7 @@ export default function TagManagement() {
                 />
                 <button
                   onClick={handleCreateCategory}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-900 dark:bg-gray-700 text-white hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors"
                 >
                   <Save className="w-4 h-4" />
                   저장
@@ -148,7 +139,7 @@ export default function TagManagement() {
                     setIsNewCategory(false)
                     setNewCategoryName('')
                   }}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -163,7 +154,7 @@ export default function TagManagement() {
               const isEditing = editingCategoryId === category.id
 
               return (
-                <div key={category.id} className="border border-gray-200 rounded-lg p-4">
+                <div key={category.id} className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
                   <div className="flex items-center justify-between mb-3">
                     {isEditing ? (
                       <input
@@ -178,24 +169,24 @@ export default function TagManagement() {
                         onBlur={(e) => {
                           handleUpdateCategory(category.id, e.target.value)
                         }}
-                        className="flex-1 px-3 py-1 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="flex-1 px-3 py-1 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100"
                         autoFocus
                       />
                     ) : (
-                      <h3 className="text-lg font-semibold">{category.name}</h3>
+                      <h3 className="text-base font-medium text-gray-900 dark:text-gray-100">{category.name}</h3>
                     )}
                     <div className="flex items-center gap-2">
                       {!isEditing && (
                         <>
                           <button
                             onClick={() => setEditingCategoryId(category.id)}
-                            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                            className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDeleteCategory(category.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                            className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -207,14 +198,14 @@ export default function TagManagement() {
                   {/* 태그 목록 */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">태그</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">태그</span>
                       {!isNewTag || newTagCategoryId !== category.id ? (
                         <button
                           onClick={() => {
                             setIsNewTag(true)
                             setNewTagCategoryId(category.id)
                           }}
-                          className="flex items-center gap-1 px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                          className="flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                         >
                           <Plus className="w-3 h-3" />
                           태그 추가
@@ -226,7 +217,7 @@ export default function TagManagement() {
                             value={newTagName}
                             onChange={(e) => setNewTagName(e.target.value)}
                             placeholder="태그 이름"
-                            className="px-3 py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="px-2 py-0.5 text-xs border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                             autoFocus
                             onKeyPress={(e) => {
                               if (e.key === 'Enter') {
@@ -236,7 +227,7 @@ export default function TagManagement() {
                           />
                           <button
                             onClick={handleCreateTag}
-                            className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                            className="p-1 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
                           >
                             <Save className="w-3 h-3" />
                           </button>
@@ -246,7 +237,7 @@ export default function TagManagement() {
                               setNewTagName('')
                               setNewTagCategoryId('')
                             }}
-                            className="p-1 text-gray-600 hover:bg-gray-100 rounded"
+                            className="p-1 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -259,7 +250,7 @@ export default function TagManagement() {
                         return (
                           <div
                             key={tag.id}
-                            className="flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-sm"
+                            className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs"
                           >
                             {isEditingTag ? (
                               <input
@@ -274,21 +265,21 @@ export default function TagManagement() {
                                 onBlur={(e) => {
                                   handleUpdateTag(tag.id, e.target.value)
                                 }}
-                                className="w-24 px-2 py-0.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="w-24 px-2 py-0.5 text-xs border-b border-gray-200 dark:border-gray-600 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100"
                                 autoFocus
                               />
                             ) : (
                               <>
-                                <span>{tag.name}</span>
+                                <span className="text-gray-700 dark:text-gray-300">{tag.name}</span>
                                 <button
                                   onClick={() => setEditingTagId(tag.id)}
-                                  className="text-gray-600 hover:text-gray-900"
+                                  className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
                                 >
                                   <Edit2 className="w-3 h-3" />
                                 </button>
                                 <button
                                   onClick={() => handleDeleteTag(tag.id)}
-                                  className="text-red-600 hover:text-red-900"
+                                  className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
                                 >
                                   <Trash2 className="w-3 h-3" />
                                 </button>

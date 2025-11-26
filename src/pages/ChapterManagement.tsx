@@ -52,12 +52,12 @@ function SortableChapterCard({ chapter, workId, onDelete, activeId }: SortableCh
   return (
     <>
       {showDropIndicator && (
-        <div className="h-1 bg-blue-500 rounded-full my-2" />
+        <div className="h-0.5 bg-gray-300 rounded-full my-2" />
       )}
       <div
         ref={setNodeRef}
         style={style}
-        className="bg-white rounded-lg border border-gray-200 p-6 hover:border-blue-300 hover:shadow-md transition-all"
+        className="bg-white rounded-lg border border-gray-200 p-6 hover:border-gray-300 hover:shadow-sm transition-all"
       >
         <div className="flex items-start justify-between">
           <div className="flex items-start gap-4 flex-1">
@@ -69,9 +69,9 @@ function SortableChapterCard({ chapter, workId, onDelete, activeId }: SortableCh
               <GripVertical className="w-5 h-5" />
             </div>
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">{chapter.title}</h3>
+              <h3 className="text-base font-medium text-gray-900 mb-2">{chapter.title}</h3>
               {chapter.structureType && (
-                <span className="inline-block px-2 py-1 text-xs font-medium rounded bg-blue-100 text-blue-700 mb-2">
+                <span className="inline-block px-2 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-700 mb-2">
                   {chapter.structureType === 'gi' ? '기' :
                    chapter.structureType === 'seung' ? '승' :
                    chapter.structureType === 'jeon' ? '전' :
@@ -83,14 +83,14 @@ function SortableChapterCard({ chapter, workId, onDelete, activeId }: SortableCh
           <div className="flex gap-2">
             <Link
               to={`/works/${workId}/chapters/${chapter.id}`}
-              className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 transition-colors"
             >
               <Edit2 className="w-4 h-4" />
               편집
             </Link>
             <button
               onClick={() => onDelete(chapter.id)}
-              className="flex items-center gap-2 px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 transition-colors"
             >
               <Trash2 className="w-4 h-4" />
               삭제
@@ -170,28 +170,20 @@ export default function ChapterManagement() {
 
   if (isLoading) {
     return (
-      <div className="p-8 flex justify-center items-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="p-8 flex justify-center items-center">
+        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
       </div>
     )
   }
 
   return (
     <div className="p-8">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <div className="mb-6">
-          <button
-            onClick={() => navigate(`/works/${workId}`, { state: { tab: 'episodes' } })}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            연재로 돌아가기
-          </button>
-          <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold text-gray-900">장 관리</h1>
+          <div className="flex items-center justify-end">
             <Link
               to={`/works/${workId}/chapters/new`}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-900 text-white hover:bg-gray-800 transition-colors"
             >
               <Plus className="w-4 h-4" />
               새 장
@@ -201,10 +193,10 @@ export default function ChapterManagement() {
 
         {workChapters.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-            <p className="text-gray-500 mb-4">장이 없습니다.</p>
+            <p className="text-sm text-gray-500 mb-4">장이 없습니다.</p>
             <Link
               to={`/works/${workId}/chapters/new`}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-block"
+              className="px-3 py-1.5 text-sm bg-gray-900 text-white hover:bg-gray-800 transition-colors inline-block rounded"
             >
               첫 장 만들기
             </Link>

@@ -62,26 +62,26 @@ export default function CharacterCard({
           {...attributes}
           {...listeners}
           data-drag-handle
-          className="cursor-grab active:cursor-grabbing flex items-center justify-center p-2 text-gray-400 hover:text-gray-600"
+          className="cursor-grab active:cursor-grabbing flex items-center justify-center p-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
         >
           <GripVertical className="w-5 h-5" />
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <h3 className="text-lg font-semibold text-gray-900 mb-1">{character.name}</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">{character.name}</h3>
         
         {character.role && (
-          <span className="inline-block px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 rounded mb-2">
+          <span className="inline-block px-2 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded mb-2">
             {character.role}
           </span>
         )}
 
         {character.age && (
-          <p className="text-sm text-gray-600 mb-2">나이: {character.age}세</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">나이: {character.age}세</p>
         )}
 
         {character.description && (
-          <p className="text-gray-600 text-sm">{character.description}</p>
+          <p className="text-gray-600 dark:text-gray-400 text-sm">{character.description}</p>
         )}
       </div>
     </div>
@@ -90,11 +90,11 @@ export default function CharacterCard({
   if (isDraggable) {
     return (
       <>
-        {showDropIndicator && <div className="h-1 bg-blue-500 rounded-full my-2" />}
+        {showDropIndicator && <div className="h-0.5 bg-gray-300 dark:bg-gray-600 rounded-full my-2" />}
         <div
           ref={setNodeRef}
           style={style}
-          className="block bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-md p-6"
+          className="block bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all p-4 sm:p-6"
           onClick={handleCardClick}
           onDragStart={(e) => e.preventDefault()}
         >
@@ -107,7 +107,7 @@ export default function CharacterCard({
   return (
     <Link
       to={`/works/${characterWorkId}/characters/${character.id}`}
-      className="block bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all p-6"
+      className="block bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all p-4 sm:p-6"
     >
       {cardContent}
     </Link>

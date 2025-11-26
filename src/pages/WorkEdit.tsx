@@ -128,32 +128,25 @@ export default function WorkEdit() {
   // 기존 작품 편집일 때만 로딩 표시
   if (!isNew && isLoading && !currentWork) {
     return (
-      <div className="p-8 flex justify-center items-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="p-8 flex justify-center items-center bg-white dark:bg-gray-900">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
       </div>
     )
   }
 
   return (
-    <div className="p-8">
-      <div className="max-w-5xl mx-auto">
-        <div className="mb-6">
-          <button
-            onClick={() => navigate(isNew ? '/works' : `/works/${workId}`)}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            {isNew ? '작품 목록으로' : '뒤로'}
-          </button>
-          <h1 className="text-3xl font-bold text-gray-900">
+    <div className="p-6 sm:p-6 md:p-8 bg-white dark:bg-gray-900">
+      <div className="max-w-4xl mx-auto">
+        <div className="mb-6 md:mb-8">
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100">
             {isNew ? '새 작품 만들기' : '작품 편집'}
           </h1>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-6">
+        <div className="space-y-6">
           {/* Title */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               제목 <span className="text-red-500">*</span>
             </label>
             <input
@@ -161,13 +154,13 @@ export default function WorkEdit() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="작품 제목을 입력하세요"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
             />
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               설명
             </label>
             <textarea
@@ -175,13 +168,13 @@ export default function WorkEdit() {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="작품에 대한 간단한 설명을 입력하세요"
               rows={6}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors resize-none bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
             />
           </div>
 
           {/* Category */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               카테고리
             </label>
             <input
@@ -189,7 +182,7 @@ export default function WorkEdit() {
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               placeholder="카테고리를 입력하세요 (예: 판타지, 현대물 등)"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
             />
           </div>
 
@@ -208,18 +201,18 @@ export default function WorkEdit() {
 
                 return (
                   <div key={category.id}>
-                    <div className="text-xs font-medium text-gray-500 mb-1">{category.name}</div>
+                    <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{category.name}</div>
                     <div className="flex flex-wrap gap-2">
                       {selectedCategoryTags.map((tag) => (
                         <span
                           key={tag.id}
-                          className="inline-flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded text-xs"
                         >
                           {tag.name}
                           <button
                             type="button"
                             onClick={() => setSelectedTagIds(selectedTagIds.filter((id) => id !== tag.id))}
-                            className="hover:text-blue-900"
+                            className="hover:text-gray-900 dark:hover:text-gray-100"
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -262,7 +255,7 @@ export default function WorkEdit() {
 
                 return (
                   <div key={category.id}>
-                    <h4 className="text-sm font-medium text-gray-600 mb-2">{category.name}</h4>
+                    <h4 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">{category.name}</h4>
                     <div className="flex flex-wrap gap-2 mb-2">
                       {categoryTags.map((tag) => {
                         const isSelected = selectedTagIds.includes(tag.id)
@@ -277,10 +270,10 @@ export default function WorkEdit() {
                                 setSelectedTagIds([...selectedTagIds, tag.id])
                               }
                             }}
-                            className={`px-3 py-1 rounded-full text-sm transition-colors ${
+                            className={`px-2 py-0.5 rounded text-xs transition-colors ${
                               isSelected
-                                ? 'bg-purple-500 text-white'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                ? 'bg-gray-900 dark:bg-gray-500 text-white dark:text-white border border-gray-700 dark:border-gray-400'
+                                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 border border-transparent'
                             }`}
                           >
                             {tag.name}
@@ -301,13 +294,13 @@ export default function WorkEdit() {
                           }
                         }}
                         placeholder="새 태그 추가..."
-                        className="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="flex-1 px-3 py-1.5 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                       />
                       <button
                         type="button"
                         onClick={handleAddNewTag}
                         disabled={!newTagInput.trim()}
-                        className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                        className="px-2.5 py-1 text-xs bg-gray-900 dark:bg-gray-700 text-white hover:bg-gray-800 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 transition-colors"
                       >
                         <Plus className="w-3 h-3" />
                         추가
@@ -320,10 +313,10 @@ export default function WorkEdit() {
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+          <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
             <button
               onClick={() => navigate(isNew ? '/works' : `/works/${workId}`)}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
             >
               취소
             </button>
@@ -334,7 +327,7 @@ export default function WorkEdit() {
                 handleSave()
               }}
               disabled={isSaving || !title.trim()}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-900 dark:bg-gray-700 text-white hover:bg-gray-800 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isSaving ? (
                 <>

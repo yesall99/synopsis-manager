@@ -59,21 +59,21 @@ export default function SearchModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-black dark:bg-opacity-60 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full mx-2 sm:mx-4 max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-bold text-gray-900">검색</h2>
+        <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-700">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">검색</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Search Input */}
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-6 border-b border-gray-100 dark:border-gray-700">
           <input
             type="text"
             value={searchQuery}
@@ -84,7 +84,7 @@ export default function SearchModal({
               }
             }}
             placeholder="검색어를 입력하세요..."
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
             autoFocus
           />
         </div>
@@ -98,14 +98,14 @@ export default function SearchModal({
 
             return (
               <div key={category.id} className="space-y-2">
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">{category.name}</h3>
+                <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-3">{category.name}</h3>
                 <div className="relative">
                   {hasLeftScroll && (
                     <button
                       onClick={() => handleScroll(category.id, 'left')}
-                      className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white shadow-md rounded-full p-2 hover:bg-gray-50"
+                      className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-white dark:bg-gray-800 shadow-sm rounded-full p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                     >
-                      <ChevronLeft className="w-5 h-5 text-gray-600" />
+                      <ChevronLeft className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                     </button>
                   )}
                   <div
@@ -119,15 +119,15 @@ export default function SearchModal({
                         <button
                           key={tag.id}
                           onClick={() => handleTagToggle(tag.id)}
-                          className={`flex items-center gap-1 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                          className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs whitespace-nowrap transition-colors ${
                             isSelected
-                              ? 'bg-purple-500 text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              ? 'bg-gray-900 dark:bg-gray-700 text-white'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                           }`}
                         >
                           {tag.name}
                           {tag.isNew && (
-                            <span className="text-xs bg-white text-purple-500 px-1 rounded">(N)</span>
+                            <span className="text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-1 rounded">(N)</span>
                           )}
                         </button>
                       )
@@ -136,9 +136,9 @@ export default function SearchModal({
                   {hasRightScroll && (
                     <button
                       onClick={() => handleScroll(category.id, 'right')}
-                      className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white shadow-md rounded-full p-2 hover:bg-gray-50"
+                      className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-white dark:bg-gray-800 shadow-sm rounded-full p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                     >
-                      <ChevronRight className="w-5 h-5 text-gray-600" />
+                      <ChevronRight className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                     </button>
                   )}
                 </div>
@@ -148,22 +148,22 @@ export default function SearchModal({
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-gray-200 flex justify-between items-center">
-          <div className="text-sm text-gray-600">
+        <div className="p-6 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center">
+          <div className="text-sm text-gray-500 dark:text-gray-400">
             {selectedTags.length > 0 && (
               <span>{selectedTags.length}개의 태그 선택됨</span>
             )}
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
             >
               취소
             </button>
             <button
               onClick={handleSearch}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="px-3 py-1.5 text-sm bg-gray-900 dark:bg-gray-700 text-white hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors"
             >
               검색
             </button>

@@ -215,58 +215,53 @@ export default function WorkDetail() {
 
   if (isLoading || !currentWork) {
     return (
-      <div className="p-8 flex justify-center items-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      <div className="p-8 flex justify-center items-center bg-white dark:bg-gray-900">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
       </div>
     )
   }
 
   return (
-    <div className="p-8">
-      <div className="max-w-5xl mx-auto">
+    <div className="p-6 sm:p-6 md:p-8 bg-white dark:bg-gray-900">
+      <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="mb-6">
-          <button
-            onClick={() => navigate('/works')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            작품 목록으로
-          </button>
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">{currentWork.title}</h1>
-              <p className="text-gray-600">{currentWork.description}</p>
+        <div className="mb-6 md:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-1 break-words">{currentWork.title}</h1>
+              {currentWork.description && (
+                <p className="text-sm text-gray-600 dark:text-gray-400 break-words">{currentWork.description}</p>
+              )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-1.5 flex-shrink-0">
               <button
                 onClick={() => setIsExportDialogOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
               >
                 <Download className="w-4 h-4" />
-                내보내기
+                <span className="hidden sm:inline">내보내기</span>
               </button>
               <button
                 onClick={() => navigate(`/works/${workId}/edit`)}
-                className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
               >
                 <Edit2 className="w-4 h-4" />
-                편집
+                <span className="hidden sm:inline">편집</span>
               </button>
               <button
                 onClick={handleDelete}
-                className="flex items-center gap-2 px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50"
+                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
               >
                 <Trash2 className="w-4 h-4" />
-                삭제
+                <span className="hidden sm:inline">삭제</span>
               </button>
             </div>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="border-b border-gray-200 mb-6">
-          <nav className="flex gap-4">
+        <div className="border-b border-gray-100 dark:border-gray-700 mb-6 overflow-x-auto">
+          <nav className="flex gap-4 sm:gap-6 min-w-max sm:min-w-0">
             {[
               { id: 'synopsis' as TabType, label: '시놉시스', icon: BookOpen, count: 0 },
               { id: 'characters' as TabType, label: '캐릭터', icon: Users, count: workCharacters.length },
@@ -278,16 +273,16 @@ export default function WorkDetail() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
+                  className={`flex items-center gap-1.5 px-0 py-3 text-sm border-b-2 transition-colors ${
                     activeTab === tab.id
-                      ? 'border-blue-600 text-blue-600 font-medium'
-                      : 'border-transparent text-gray-600 hover:text-gray-900'
+                      ? 'border-gray-900 dark:border-gray-100 text-gray-900 dark:text-gray-100 font-medium'
+                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
                   }`}
                 >
-                  <Icon className="w-5 h-5" />
+                  <Icon className="w-4 h-4" />
                   <span>{tab.label}</span>
                   {tab.count > 0 && (
-                    <span className="text-sm bg-gray-100 px-2 py-0.5 rounded-full">{tab.count}</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500 ml-0.5">({tab.count})</span>
                   )}
                 </button>
               )
@@ -304,7 +299,7 @@ export default function WorkDetail() {
                   <div className="flex justify-end mb-4">
                     <Link
                       to={`/works/${workId}/synopsis/${workSynopses[0].id}`}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-900 dark:bg-gray-700 text-white hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors"
                     >
                       <Edit2 className="w-4 h-4" />
                       시놉시스 편집
@@ -315,15 +310,15 @@ export default function WorkDetail() {
                     {workSynopses[0].structure ? (
                       <>
                         {/* 기 */}
-                        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-4">기</h3>
+                        <div className="mb-6 p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                          <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-3 sm:mb-4">기</h3>
                           {workSynopses[0].structure.gi.length === 0 ? (
-                            <p className="text-gray-400 italic text-center py-4">항목이 없습니다.</p>
+                            <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">항목이 없습니다.</p>
                           ) : (
-                            <div className="space-y-4">
+                            <div className="space-y-2 sm:space-y-3">
                               {workSynopses[0].structure.gi.map((s) => (
-                                <div key={s.id} className="bg-white border border-gray-200 rounded-lg p-4">
-                                  {s.title && <h4 className="font-medium text-gray-900 mb-2">{s.title}</h4>}
+                                <div key={s.id} className="p-2 sm:p-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded">
+                                  {s.title && <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">{s.title}</h4>}
                                   {s.content && (
                                     <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: s.content }} />
                                   )}
@@ -334,15 +329,15 @@ export default function WorkDetail() {
                         </div>
 
                         {/* 승 */}
-                        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-4">승</h3>
+                        <div className="mb-6 p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                          <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-3 sm:mb-4">승</h3>
                           {workSynopses[0].structure.seung.length === 0 ? (
-                            <p className="text-gray-400 italic text-center py-4">항목이 없습니다.</p>
+                            <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">항목이 없습니다.</p>
                           ) : (
-                            <div className="space-y-4">
+                            <div className="space-y-2 sm:space-y-3">
                               {workSynopses[0].structure.seung.map((s) => (
-                                <div key={s.id} className="bg-white border border-gray-200 rounded-lg p-4">
-                                  {s.title && <h4 className="font-medium text-gray-900 mb-2">{s.title}</h4>}
+                                <div key={s.id} className="p-2 sm:p-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded">
+                                  {s.title && <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">{s.title}</h4>}
                                   {s.content && (
                                     <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: s.content }} />
                                   )}
@@ -353,15 +348,15 @@ export default function WorkDetail() {
                         </div>
 
                         {/* 전 */}
-                        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-4">전</h3>
+                        <div className="mb-6 p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                          <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-3 sm:mb-4">전</h3>
                           {workSynopses[0].structure.jeon.length === 0 ? (
-                            <p className="text-gray-400 italic text-center py-4">항목이 없습니다.</p>
+                            <p className="text-sm text-gray-400 text-center py-4">항목이 없습니다.</p>
                           ) : (
-                            <div className="space-y-4">
+                            <div className="space-y-2 sm:space-y-3">
                               {workSynopses[0].structure.jeon.map((s) => (
-                                <div key={s.id} className="bg-white border border-gray-200 rounded-lg p-4">
-                                  {s.title && <h4 className="font-medium text-gray-900 mb-2">{s.title}</h4>}
+                                <div key={s.id} className="p-2 sm:p-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded">
+                                  {s.title && <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">{s.title}</h4>}
                                   {s.content && (
                                     <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: s.content }} />
                                   )}
@@ -372,15 +367,15 @@ export default function WorkDetail() {
                         </div>
 
                         {/* 결 */}
-                        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-4">결</h3>
+                        <div className="mb-6 p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                          <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-3 sm:mb-4">결</h3>
                           {workSynopses[0].structure.gyeol.length === 0 ? (
-                            <p className="text-gray-400 italic text-center py-4">항목이 없습니다.</p>
+                            <p className="text-sm text-gray-400 text-center py-4">항목이 없습니다.</p>
                           ) : (
-                            <div className="space-y-4">
+                            <div className="space-y-2 sm:space-y-3">
                               {workSynopses[0].structure.gyeol.map((s) => (
-                                <div key={s.id} className="bg-white border border-gray-200 rounded-lg p-4">
-                                  {s.title && <h4 className="font-medium text-gray-900 mb-2">{s.title}</h4>}
+                                <div key={s.id} className="p-2 sm:p-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded">
+                                  {s.title && <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">{s.title}</h4>}
                                   {s.content && (
                                     <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: s.content }} />
                                   )}
@@ -391,8 +386,8 @@ export default function WorkDetail() {
                         </div>
                       </>
                     ) : (
-                      <div className="bg-white rounded-lg border border-gray-200 p-6">
-                        <p className="text-gray-400 italic">시놉시스 구조가 없습니다.</p>
+                      <div className="p-6 bg-gray-50 border border-gray-200 rounded-lg">
+                        <p className="text-sm text-gray-400 text-center">시놉시스 구조가 없습니다.</p>
                       </div>
                     )}
                   </div>
@@ -403,22 +398,21 @@ export default function WorkDetail() {
 
           {activeTab === 'characters' && (
             <div>
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">캐릭터</h2>
+              <div className="flex justify-end mb-4">
                 <Link
                   to={`/works/${workId}/characters/new`}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-900 text-white hover:bg-gray-800 transition-colors"
                 >
                   <Plus className="w-4 h-4" />
                   새 캐릭터
                 </Link>
               </div>
               {workCharacters.length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-                  <p className="text-gray-500 mb-4">캐릭터가 없습니다.</p>
+                <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <p className="text-sm text-gray-500 mb-4">캐릭터가 없습니다.</p>
                   <Link
                     to={`/works/${workId}/characters/new`}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-block"
+                    className="px-3 py-1.5 text-sm bg-gray-900 text-white hover:bg-gray-800 transition-colors inline-block rounded"
                   >
                     첫 캐릭터 만들기
                   </Link>
@@ -435,7 +429,7 @@ export default function WorkDetail() {
                     {/* 주연 캐릭터 */}
                     {workCharacters.some((c) => c.isMainCharacter) && (
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">주연</h3>
+                        <h3 className="text-base font-medium text-gray-900 mb-4">주연</h3>
                         <SortableContext
                           items={workCharacters.filter((c) => c.isMainCharacter).map((c) => c.id)}
                           strategy={verticalListSortingStrategy}
@@ -460,7 +454,7 @@ export default function WorkDetail() {
                     {/* 조연 캐릭터 */}
                     {workCharacters.some((c) => !c.isMainCharacter) && (
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">조연</h3>
+                        <h3 className="text-base font-medium text-gray-900 mb-4">조연</h3>
                         <SortableContext
                           items={workCharacters.filter((c) => !c.isMainCharacter).map((c) => c.id)}
                           strategy={verticalListSortingStrategy}
@@ -489,22 +483,21 @@ export default function WorkDetail() {
 
           {activeTab === 'settings' && (
             <div>
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold">설정</h2>
+              <div className="flex justify-end mb-4">
                 <Link
                   to={`/works/${workId}/settings/new`}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-900 text-white hover:bg-gray-800 transition-colors"
                 >
                   <Plus className="w-4 h-4" />
                   새 설정
                 </Link>
               </div>
               {workSettings.length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-                  <p className="text-gray-500 mb-4">설정이 없습니다.</p>
+                <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <p className="text-sm text-gray-500 mb-4">설정이 없습니다.</p>
                   <Link
                     to={`/works/${workId}/settings/new`}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-block"
+                    className="px-3 py-1.5 text-sm bg-gray-900 text-white hover:bg-gray-800 transition-colors inline-block rounded"
                   >
                     첫 설정 만들기
                   </Link>
@@ -538,8 +531,8 @@ export default function WorkDetail() {
           {activeTab === 'episodes' && (
             <div>
               {/* 서브 탭 */}
-              <div className="border-b border-gray-200 mb-6">
-                <nav className="flex gap-4">
+              <div className="border-b border-gray-100 dark:border-gray-700 mb-6">
+                <nav className="flex gap-6">
                   {[
                     { id: 'list' as const, label: '회차', icon: FileText },
                     { id: 'episodeStats' as const, label: '회차 통계', icon: BarChart3 },
@@ -550,13 +543,13 @@ export default function WorkDetail() {
                       <button
                         key={tab.id}
                         onClick={() => setEpisodeSubTab(tab.id)}
-                        className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
+                        className={`flex items-center gap-1.5 px-0 py-3 text-sm border-b-2 transition-colors ${
                           episodeSubTab === tab.id
-                            ? 'border-blue-600 text-blue-600 font-medium'
-                            : 'border-transparent text-gray-600 hover:text-gray-900'
+                            ? 'border-gray-900 dark:border-gray-100 text-gray-900 dark:text-gray-100 font-medium'
+                            : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
                         }`}
                       >
-                        <Icon className="w-5 h-5" />
+                        <Icon className="w-4 h-4" />
                         <span>{tab.label}</span>
                       </button>
                     )
@@ -566,29 +559,28 @@ export default function WorkDetail() {
 
               {episodeSubTab === 'list' && (
                 <div>
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-semibold">회차</h2>
-                    <div className="flex gap-2 items-center">
-                      <div className="flex items-center gap-2">
-                        <label className="text-sm text-gray-700">정렬:</label>
-                        <select
-                          value={episodeSortOrder}
-                          onChange={(e) => setEpisodeSortOrder(e.target.value as 'asc' | 'desc')}
-                          className="px-3 py-1 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                        >
-                          <option value="asc">1화부터</option>
-                          <option value="desc">최신화부터</option>
-                        </select>
-                      </div>
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm text-gray-600 dark:text-gray-400">정렬:</label>
+                      <select
+                        value={episodeSortOrder}
+                        onChange={(e) => setEpisodeSortOrder(e.target.value as 'asc' | 'desc')}
+                        className="px-3 py-1 text-sm border border-gray-200 dark:border-gray-700 rounded focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 transition-colors bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                      >
+                        <option value="asc">1화부터</option>
+                        <option value="desc">최신화부터</option>
+                      </select>
+                    </div>
+                    <div className="flex gap-2 items-center flex-wrap">
                       <Link
                         to={`/works/${workId}/chapters`}
-                        className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300"
                       >
                         장 관리
                       </Link>
                       <Link
                         to={`/works/${workId}/episodes/new`}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-900 dark:bg-gray-700 text-white hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors"
                       >
                         <Plus className="w-4 h-4" />
                         새 회차
@@ -596,26 +588,26 @@ export default function WorkDetail() {
                     </div>
                   </div>
                   {workEpisodes.length === 0 ? (
-                    <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-                      <p className="text-gray-500 mb-4">회차가 없습니다.</p>
+                    <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">회차가 없습니다.</p>
                       <Link
                         to={`/works/${workId}/episodes/new`}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-block"
+                        className="px-3 py-1.5 text-sm bg-gray-900 dark:bg-gray-700 text-white hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors inline-block rounded"
                       >
                         첫 회차 만들기
                       </Link>
                     </div>
                   ) : (
-                    <div className="space-y-8">
+                    <div className="space-y-6">
                       {workChapters.map((chapter) => {
                         const chapterEpisodes = workEpisodes.filter((e) => e.chapterId === chapter.id)
                         return (
-                          <div key={chapter.id} className="border rounded-lg p-4 bg-gray-50">
+                          <div key={chapter.id} className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
                             <div className="flex items-center justify-between mb-4">
-                              <h3 className="text-lg font-semibold text-gray-900">
+                              <h3 className="text-base font-medium text-gray-900 dark:text-gray-100">
                                 {chapter.title}
                                 {chapter.structureType && (
-                                  <span className="ml-2 text-sm px-2 py-1 bg-blue-100 text-blue-700 rounded">
+                                  <span className="ml-2 text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                                     {chapter.structureType === 'gi' ? '기' :
                                      chapter.structureType === 'seung' ? '승' :
                                      chapter.structureType === 'jeon' ? '전' :
@@ -625,54 +617,54 @@ export default function WorkDetail() {
                               </h3>
                               <Link
                                 to={`/works/${workId}/chapters/${chapter.id}`}
-                                className="text-sm text-gray-600 hover:text-gray-900"
+                                className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
                               >
                                 편집
                               </Link>
                             </div>
                             {chapterEpisodes.length === 0 ? (
-                              <p className="text-gray-400 italic text-center py-4">회차가 없습니다.</p>
+                              <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">회차가 없습니다.</p>
                             ) : (
-                              <div className="space-y-4">
+                              <div className="space-y-3">
                                 {chapterEpisodes.map((episode) => (
                                   <Link
                                     key={episode.id}
                                     to={`/works/${workId}/episodes/${episode.id}`}
-                                    className="block bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all p-6"
+                                    className="block bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all p-3 sm:p-5"
                                   >
-                                    <div className="flex items-start justify-between">
-                                      <div className="flex-1">
-                                        <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
+                                      <div className="flex-1 min-w-0">
+                                        <h4 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1.5 sm:mb-2 break-words">
                                           제 {episode.episodeNumber}화{episode.title ? ` ${episode.title}` : ''}
                                         </h4>
-                                        {episode.wordCount && (() => {
+                                        {(() => {
                                           // 공백 포함/미포함 계산
                                           const tempDiv = document.createElement('div')
-                                          tempDiv.innerHTML = episode.content
+                                          tempDiv.innerHTML = episode.content || ''
                                           const text = tempDiv.textContent || tempDiv.innerText || ''
                                           const withSpaces = text.length
                                           const withoutSpaces = text.replace(/\s/g, '').length
                                           return (
-                                            <div className="text-sm text-gray-500 space-y-1">
+                                            <div className="text-sm text-gray-500 dark:text-gray-400 space-y-1">
                                               <p>공포: {withSpaces.toLocaleString()}자</p>
                                               <p>공미포: {withoutSpaces.toLocaleString()}자</p>
                                             </div>
                                           )
                                         })()}
                                         {episode.publishedAt && (
-                                          <p className="text-sm text-gray-500">
+                                          <p className="text-sm text-gray-500 dark:text-gray-400">
                                             발행일: {new Date(episode.publishedAt).toLocaleDateString('ko-KR')}
                                           </p>
                                         )}
                                       </div>
-                                      <div className="text-right ml-4">
+                                      <div className="text-left sm:text-right sm:ml-4 flex-shrink-0">
                                         {episode.subscriberCount !== undefined && (
-                                          <p className="text-sm text-gray-500 mb-1">
+                                          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
                                             선작수: {episode.subscriberCount.toLocaleString()}
                                           </p>
                                         )}
                                         {episode.viewCount !== undefined && (
-                                          <p className="text-sm text-gray-500">
+                                          <p className="text-sm text-gray-500 dark:text-gray-400">
                                             조회수: {episode.viewCount.toLocaleString()}
                                           </p>
                                         )}
@@ -687,43 +679,51 @@ export default function WorkDetail() {
                       })}
 
                       {workEpisodes.filter((e) => !e.chapterId).length > 0 && (
-                        <div className="border rounded-lg p-4 bg-gray-50">
+                        <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
                           {workChapters.length > 0 && (
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">기타</h3>
+                            <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-4">기타</h3>
                           )}
-                          <div className="space-y-4">
+                          <div className="space-y-3">
                             {workEpisodes
                               .filter((e) => !e.chapterId)
                               .map((episode) => (
                                 <Link
                                   key={episode.id}
                                   to={`/works/${workId}/episodes/${episode.id}`}
-                                  className="block bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all p-6"
+                                  className="block bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all p-3 sm:p-5"
                                 >
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                      <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
+                                    <div className="flex-1 min-w-0">
+                                      <h4 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1.5 sm:mb-2 break-words">
                                         제 {episode.episodeNumber}화{episode.title ? ` ${episode.title}` : ''}
                                       </h4>
-                                      {episode.wordCount && (
-                                        <p className="text-sm text-gray-500">
-                                          글자 수: {episode.wordCount.toLocaleString()}자
-                                        </p>
-                                      )}
+                                      {(() => {
+                                        const tempDiv = document.createElement('div')
+                                        tempDiv.innerHTML = episode.content || ''
+                                        const text = tempDiv.textContent || tempDiv.innerText || ''
+                                        const withSpaces = text.length
+                                        const withoutSpaces = text.replace(/\s/g, '').length
+                                        return (
+                                          <div className="text-sm text-gray-500 dark:text-gray-400 space-y-1">
+                                            <p>공포: {withSpaces.toLocaleString()}자</p>
+                                            <p>공미포: {withoutSpaces.toLocaleString()}자</p>
+                                          </div>
+                                        )
+                                      })()}
                                       {episode.publishedAt && (
-                                        <p className="text-sm text-gray-500">
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">
                                           발행일: {new Date(episode.publishedAt).toLocaleDateString('ko-KR')}
                                         </p>
                                       )}
                                     </div>
-                                    <div className="text-right ml-4">
+                                    <div className="text-left sm:text-right sm:ml-4 flex-shrink-0">
                                       {episode.subscriberCount !== undefined && (
-                                        <p className="text-sm text-gray-500 mb-1">
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
                                           선작수: {episode.subscriberCount.toLocaleString()}
                                         </p>
                                       )}
                                       {episode.viewCount !== undefined && (
-                                        <p className="text-sm text-gray-500">
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">
                                           조회수: {episode.viewCount.toLocaleString()}
                                         </p>
                                       )}
@@ -740,24 +740,24 @@ export default function WorkDetail() {
               )}
 
               {episodeSubTab === 'episodeStats' && (
-                <div className="space-y-8">
+                <div className="space-y-6">
                   {/* 전체 통계 */}
                   <div>
-                    <h2 className="text-xl font-semibold mb-4">전체 통계</h2>
-                    <div className="bg-white rounded-lg border border-gray-200 p-6">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">전체 통계</h2>
+                    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
                       <div className="mb-6">
-                        <p className="text-sm text-gray-500 mb-1">총 회차 수</p>
-                        <p className="text-2xl font-bold text-gray-900">{workEpisodes.length}화</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">총 회차 수</p>
+                        <p className="text-lg font-bold text-gray-900 dark:text-gray-100">{workEpisodes.length}화</p>
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* 공포 섹션 */}
-                        <div className="border rounded-lg p-4 bg-blue-50">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-4">공포 (공백 포함)</h3>
+                        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800">
+                          <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-4">공포 (공백 포함)</h3>
                           <div className="space-y-4">
                             <div>
-                              <p className="text-sm text-gray-500 mb-1">총 글자 수</p>
-                              <p className="text-2xl font-bold text-gray-900">
+                              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">총 글자 수</p>
+                              <p className="text-lg font-bold text-gray-900 dark:text-gray-100">
                                 {workEpisodes.reduce((sum, e) => {
                                   if (!e.content) return sum
                                   const tempDiv = document.createElement('div')
@@ -768,8 +768,8 @@ export default function WorkDetail() {
                               </p>
                             </div>
                             <div>
-                              <p className="text-sm text-gray-500 mb-1">평균 글자 수</p>
-                              <p className="text-2xl font-bold text-gray-900">
+                              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">평균 글자 수</p>
+                              <p className="text-lg font-bold text-gray-900 dark:text-gray-100">
                                 {workEpisodes.length > 0
                                   ? Math.round(
                                       workEpisodes.reduce((sum, e) => {
@@ -788,12 +788,12 @@ export default function WorkDetail() {
                         </div>
 
                         {/* 공미포 섹션 */}
-                        <div className="border rounded-lg p-4 bg-green-50">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-4">공미포 (공백 미포함)</h3>
+                        <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800">
+                          <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-4">공미포 (공백 미포함)</h3>
                           <div className="space-y-4">
                             <div>
-                              <p className="text-sm text-gray-500 mb-1">총 글자 수</p>
-                              <p className="text-2xl font-bold text-gray-900">
+                              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">총 글자 수</p>
+                              <p className="text-lg font-bold text-gray-900 dark:text-gray-100">
                                 {workEpisodes.reduce((sum, e) => {
                                   if (!e.content) return sum
                                   const tempDiv = document.createElement('div')
@@ -804,8 +804,8 @@ export default function WorkDetail() {
                               </p>
                             </div>
                             <div>
-                              <p className="text-sm text-gray-500 mb-1">평균 글자 수</p>
-                              <p className="text-2xl font-bold text-gray-900">
+                              <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">평균 글자 수</p>
+                              <p className="text-lg font-bold text-gray-900 dark:text-gray-100">
                                 {workEpisodes.length > 0
                                   ? Math.round(
                                       workEpisodes.reduce((sum, e) => {
@@ -829,8 +829,8 @@ export default function WorkDetail() {
                   {/* 장별 통계 */}
                   {workChapters.length > 0 && (
                     <div>
-                      <h2 className="text-xl font-semibold mb-4">장별 통계</h2>
-                      <div className="space-y-6">
+                      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">장별 통계</h2>
+                      <div className="space-y-4">
                         {workChapters.map((chapter) => {
                           const chapterEpisodes = workEpisodes.filter((e) => e.chapterId === chapter.id)
                           
@@ -850,11 +850,11 @@ export default function WorkDetail() {
                           const avgWordsWithoutSpaces = chapterEpisodes.length > 0 ? Math.round(totalWordsWithoutSpaces / chapterEpisodes.length) : 0
 
                           return (
-                            <div key={chapter.id} className="bg-white rounded-lg border border-gray-200 p-6">
-                              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                            <div key={chapter.id} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+                              <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-4">
                                 {chapter.title}
                                 {chapter.structureType && (
-                                  <span className="ml-2 text-sm px-2 py-1 bg-blue-100 text-blue-700 rounded">
+                                  <span className="ml-2 text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                                     {chapter.structureType === 'gi' && '기'}
                                     {chapter.structureType === 'seung' && '승'}
                                     {chapter.structureType === 'jeon' && '전'}
@@ -863,37 +863,37 @@ export default function WorkDetail() {
                                 )}
                               </h3>
                               <div className="mb-4">
-                                <p className="text-sm text-gray-500 mb-1">회차 수</p>
-                                <p className="text-xl font-bold text-gray-900">{chapterEpisodes.length}화</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">회차 수</p>
+                                <p className="text-base font-bold text-gray-900 dark:text-gray-100">{chapterEpisodes.length}화</p>
                               </div>
                               
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* 공포 섹션 */}
-                                <div className="border rounded-lg p-4 bg-blue-50">
-                                  <h4 className="text-md font-semibold text-gray-900 mb-3">공포 (공백 포함)</h4>
+                                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800">
+                                  <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">공포 (공백 포함)</h4>
                                   <div className="space-y-3">
                                     <div>
-                                      <p className="text-sm text-gray-500 mb-1">총 글자 수</p>
-                                      <p className="text-xl font-bold text-gray-900">{totalWordsWithSpaces.toLocaleString()}자</p>
+                                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">총 글자 수</p>
+                                      <p className="text-base font-bold text-gray-900 dark:text-gray-100">{totalWordsWithSpaces.toLocaleString()}자</p>
                                     </div>
                                     <div>
-                                      <p className="text-sm text-gray-500 mb-1">평균 글자 수</p>
-                                      <p className="text-xl font-bold text-gray-900">{avgWordsWithSpaces.toLocaleString()}자</p>
+                                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">평균 글자 수</p>
+                                      <p className="text-base font-bold text-gray-900 dark:text-gray-100">{avgWordsWithSpaces.toLocaleString()}자</p>
                                     </div>
                                   </div>
                                 </div>
 
                                 {/* 공미포 섹션 */}
-                                <div className="border rounded-lg p-4 bg-green-50">
-                                  <h4 className="text-md font-semibold text-gray-900 mb-3">공미포 (공백 미포함)</h4>
+                                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800">
+                                  <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">공미포 (공백 미포함)</h4>
                                   <div className="space-y-3">
                                     <div>
-                                      <p className="text-sm text-gray-500 mb-1">총 글자 수</p>
-                                      <p className="text-xl font-bold text-gray-900">{totalWordsWithoutSpaces.toLocaleString()}자</p>
+                                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">총 글자 수</p>
+                                      <p className="text-base font-bold text-gray-900 dark:text-gray-100">{totalWordsWithoutSpaces.toLocaleString()}자</p>
                                     </div>
                                     <div>
-                                      <p className="text-sm text-gray-500 mb-1">평균 글자 수</p>
-                                      <p className="text-xl font-bold text-gray-900">{avgWordsWithoutSpaces.toLocaleString()}자</p>
+                                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">평균 글자 수</p>
+                                      <p className="text-base font-bold text-gray-900 dark:text-gray-100">{avgWordsWithoutSpaces.toLocaleString()}자</p>
                                     </div>
                                   </div>
                                 </div>
@@ -919,8 +919,8 @@ export default function WorkDetail() {
 
                     return (
                       <div>
-                        <h2 className="text-xl font-semibold mb-4">기승전결별 통계</h2>
-                        <div className="space-y-6">
+                        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">기승전결별 통계</h2>
+                        <div className="space-y-4">
                           {structureGroups.map(({ type, label, chapters }) => {
                             const allEpisodes = chapters.flatMap((chapter) =>
                               workEpisodes.filter((e) => e.chapterId === chapter.id)
@@ -944,48 +944,48 @@ export default function WorkDetail() {
                             const avgWordsWithoutSpaces = allEpisodes.length > 0 ? Math.round(totalWordsWithoutSpaces / allEpisodes.length) : 0
 
                             return (
-                              <div key={type} className="bg-white rounded-lg border border-gray-200 p-6">
-                                <h3 className="text-lg font-semibold text-gray-900 mb-4">{label}</h3>
+                              <div key={type} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+                                <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-4">{label}</h3>
                                 <div className="mb-4">
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                      <p className="text-sm text-gray-500 mb-1">장 수</p>
-                                      <p className="text-xl font-bold text-gray-900">{chapters.length}개</p>
+                                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">장 수</p>
+                                      <p className="text-base font-bold text-gray-900 dark:text-gray-100">{chapters.length}개</p>
                                     </div>
                                     <div>
-                                      <p className="text-sm text-gray-500 mb-1">회차 수</p>
-                                      <p className="text-xl font-bold text-gray-900">{allEpisodes.length}화</p>
+                                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">회차 수</p>
+                                      <p className="text-base font-bold text-gray-900 dark:text-gray-100">{allEpisodes.length}화</p>
                                     </div>
                                   </div>
                                 </div>
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                   {/* 공포 섹션 */}
-                                  <div className="border rounded-lg p-4 bg-blue-50">
-                                    <h4 className="text-md font-semibold text-gray-900 mb-3">공포 (공백 포함)</h4>
+                                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800">
+                                    <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">공포 (공백 포함)</h4>
                                     <div className="space-y-3">
                                       <div>
-                                        <p className="text-sm text-gray-500 mb-1">총 글자 수</p>
-                                        <p className="text-xl font-bold text-gray-900">{totalWordsWithSpaces.toLocaleString()}자</p>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">총 글자 수</p>
+                                        <p className="text-base font-bold text-gray-900 dark:text-gray-100">{totalWordsWithSpaces.toLocaleString()}자</p>
                                       </div>
                                       <div>
-                                        <p className="text-sm text-gray-500 mb-1">평균 글자 수</p>
-                                        <p className="text-xl font-bold text-gray-900">{avgWordsWithSpaces.toLocaleString()}자</p>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">평균 글자 수</p>
+                                        <p className="text-base font-bold text-gray-900 dark:text-gray-100">{avgWordsWithSpaces.toLocaleString()}자</p>
                                       </div>
                                     </div>
                                   </div>
 
                                   {/* 공미포 섹션 */}
-                                  <div className="border rounded-lg p-4 bg-green-50">
-                                    <h4 className="text-md font-semibold text-gray-900 mb-3">공미포 (공백 미포함)</h4>
+                                  <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800">
+                                    <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">공미포 (공백 미포함)</h4>
                                     <div className="space-y-3">
                                       <div>
-                                        <p className="text-sm text-gray-500 mb-1">총 글자 수</p>
-                                        <p className="text-xl font-bold text-gray-900">{totalWordsWithoutSpaces.toLocaleString()}자</p>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">총 글자 수</p>
+                                        <p className="text-base font-bold text-gray-900 dark:text-gray-100">{totalWordsWithoutSpaces.toLocaleString()}자</p>
                                       </div>
                                       <div>
-                                        <p className="text-sm text-gray-500 mb-1">평균 글자 수</p>
-                                        <p className="text-xl font-bold text-gray-900">{avgWordsWithoutSpaces.toLocaleString()}자</p>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">평균 글자 수</p>
+                                        <p className="text-base font-bold text-gray-900 dark:text-gray-100">{avgWordsWithoutSpaces.toLocaleString()}자</p>
                                       </div>
                                     </div>
                                   </div>
@@ -1001,15 +1001,15 @@ export default function WorkDetail() {
               )}
 
               {episodeSubTab === 'serialStats' && (
-                <div className="space-y-8">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-semibold">연재 통계</h2>
+                <div className="space-y-6">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">연재 통계</h2>
                     <div className="flex items-center gap-2">
-                      <label className="text-sm text-gray-700">회차 표시 간격:</label>
+                      <label className="text-sm text-gray-600 dark:text-gray-400">회차 표시 간격:</label>
                       <select
                         value={episodeDisplayInterval}
                         onChange={(e) => setEpisodeDisplayInterval(Number(e.target.value))}
-                        className="px-3 py-1 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        className="px-3 py-1 text-sm border border-gray-200 dark:border-gray-700 rounded focus:outline-none focus:border-gray-400 dark:focus:border-gray-500 transition-colors bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                       >
                         <option value={1}>모든 회차</option>
                         <option value={5}>5개 단위</option>
@@ -1045,10 +1045,14 @@ export default function WorkDetail() {
                     const pathData = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
                     
                     return (
-                      <div className="bg-white rounded-lg border border-gray-200 p-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">선작수 추이</h3>
-                        <div className="overflow-x-auto">
-                          <svg width={graphWidth} height={graphHeight + padding * 2} className="w-full max-w-full">
+                      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-6">
+                        <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-4">선작수 추이</h3>
+                        <div className="overflow-x-auto -mx-3 sm:mx-0">
+                          <svg 
+                            viewBox={`0 0 ${graphWidth} ${graphHeight + padding * 2}`}
+                            className="w-full h-auto min-w-full"
+                            preserveAspectRatio="xMinYMin meet"
+                          >
                             {/* 그리드 라인 */}
                             {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
                               const y = padding + graphHeight - ratio * (graphHeight - padding * 2)
@@ -1063,12 +1067,13 @@ export default function WorkDetail() {
                                     stroke="#e5e7eb"
                                     strokeWidth="1"
                                     strokeDasharray="4 4"
+                                    className="dark:stroke-gray-600"
                                   />
                                   <text
                                     x={padding - 10}
                                     y={y + 4}
                                     textAnchor="end"
-                                    className="text-xs fill-gray-500"
+                                    className="text-xs fill-gray-500 dark:fill-gray-400"
                                   >
                                     {value.toLocaleString()}
                                   </text>
@@ -1104,7 +1109,7 @@ export default function WorkDetail() {
                                     x={point.x}
                                     y={graphHeight + padding + 20}
                                     textAnchor="middle"
-                                    className="text-xs fill-gray-500"
+                                    className="text-xs fill-gray-500 dark:fill-gray-400"
                                   >
                                     {point.episode.episodeNumber}화
                                   </text>
@@ -1142,10 +1147,14 @@ export default function WorkDetail() {
                     const pathData = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
                     
                     return (
-                      <div className="bg-white rounded-lg border border-gray-200 p-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">조회수 추이</h3>
-                        <div className="overflow-x-auto">
-                          <svg width={graphWidth} height={graphHeight + padding * 2} className="w-full max-w-full">
+                      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-6">
+                        <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-4">조회수 추이</h3>
+                        <div className="overflow-x-auto -mx-3 sm:mx-0">
+                          <svg 
+                            viewBox={`0 0 ${graphWidth} ${graphHeight + padding * 2}`}
+                            className="w-full h-auto min-w-full"
+                            preserveAspectRatio="xMinYMin meet"
+                          >
                             {/* 그리드 라인 */}
                             {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
                               const y = padding + graphHeight - ratio * (graphHeight - padding * 2)
@@ -1160,12 +1169,13 @@ export default function WorkDetail() {
                                     stroke="#e5e7eb"
                                     strokeWidth="1"
                                     strokeDasharray="4 4"
+                                    className="dark:stroke-gray-600"
                                   />
                                   <text
                                     x={padding - 10}
                                     y={y + 4}
                                     textAnchor="end"
-                                    className="text-xs fill-gray-500"
+                                    className="text-xs fill-gray-500 dark:fill-gray-400"
                                   >
                                     {value.toLocaleString()}
                                   </text>
@@ -1201,7 +1211,7 @@ export default function WorkDetail() {
                                     x={point.x}
                                     y={graphHeight + padding + 20}
                                     textAnchor="middle"
-                                    className="text-xs fill-gray-500"
+                                    className="text-xs fill-gray-500 dark:fill-gray-400"
                                   >
                                     {point.episode.episodeNumber}화
                                   </text>
@@ -1215,8 +1225,8 @@ export default function WorkDetail() {
                   })()}
 
                   {!workEpisodes.some((e) => (e.subscriberCount !== undefined && e.subscriberCount !== null) || (e.viewCount !== undefined && e.viewCount !== null)) && (
-                    <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-                      <p className="text-gray-500">선작수/조회수 데이터가 없습니다.</p>
+                    <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                      <p className="text-gray-500 dark:text-gray-400">선작수/조회수 데이터가 없습니다.</p>
                     </div>
                   )}
                 </div>
