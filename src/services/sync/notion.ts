@@ -1066,28 +1066,92 @@ export async function syncToNotion(
     }
   }
 
-  // 7. Tags 동기화 (태그는 작품과 직접 연결하지 않음)
-  if (dbIds.tags) {
+  // 7. Tags 동기화 (루트 페이지 하위에 "태그" 페이지 생성)
+  const rootPageId = getRootPageId()
+  if (!rootPageId) {
+    throw new Error('Root page ID is required. Please connect to Notion first.')
+  }
+  
+  // 기존 태그 페이지 ID 확인
+  const existingPageMap = getNotionWorkPageMap()
+  const tagsPageIdKey = '__tags_page__'
+  let tagsPageId = existingPageMap[tagsPageIdKey]?.workPageId
+  
+  if (!tagsPageId) {
+    // 태그 페이지가 없으면 생성
+    try {
+      const tagsPage = await client.pages.create({
+        parent: { page_id: rootPageId },
+        properties: {
+          title: {
+            title: [{ text: { content: '태그' } }],
+          },
+        },
+      })
+      tagsPageId = tagsPage.id
+      updateNotionWorkPage(tagsPageIdKey, {
+        workPageId: tagsPageId,
+      })
+      console.log('태그 페이지 생성 완료')
+    } catch (error) {
+      console.error('태그 페이지 생성 실패:', error)
+      return // 태그 페이지 생성 실패 시 태그 동기화 중단
+    }
+  }
+  
+  if (data.tags.length > 0) {
     console.log(`태그 ${data.tags.length}개 동기화 시작...`)
     let tagSuccessCount = 0
+    
+    // 기존 태그 페이지 ID 매핑 확인
+    const tagPageMap: Record<string, string> = {}
+    try {
+      const existingTagBlocks = await client.blocks.children.list({ block_id: tagsPageId })
+      // 태그 페이지의 하위 페이지 목록 가져오기 (직접 하위 페이지는 blocks.children.list로는 가져올 수 없음)
+      // 대신 각 태그를 하위 페이지로 생성
+    } catch (error) {
+      console.warn('기존 태그 목록 확인 실패:', error)
+    }
+    
     for (const tag of data.tags) {
       try {
+        // 태그를 태그 페이지의 하위 페이지로 생성
         await client.pages.create({
-          parent: { database_id: dbIds.tags },
+          parent: { page_id: tagsPageId },
           properties: {
-            '이름': {
-              title: [{ text: { content: tag.name } }],
-            },
-            '카테고리': {
-              rich_text: tag.categoryId ? [{ text: { content: tag.categoryId } }] : [],
-            },
-            '생성일': {
-              date: tag.createdAt ? { start: tag.createdAt.toISOString() } : null,
-            },
-            '수정일': {
-              date: tag.updatedAt ? { start: tag.updatedAt.toISOString() } : null,
+            title: {
+              title: [{ text: { content: tag.name || '이름 없음' } }],
             },
           },
+          children: [
+            {
+              object: 'block',
+              type: 'paragraph',
+              paragraph: {
+                rich_text: [
+                  { type: 'text', text: { content: `카테고리: ${tag.categoryId || '없음'}` } },
+                ...(tag.color ? [{ type: 'text', text: { content: ` | 색상: ${tag.color}` } }] : []),
+              ],
+            },
+            {
+              object: 'block',
+              type: 'paragraph',
+              paragraph: {
+                rich_text: [
+                  { type: 'text', text: { content: `생성일: ${tag.createdAt?.toISOString() || '없음'}` } },
+                ],
+              },
+            },
+            {
+              object: 'block',
+              type: 'paragraph',
+              paragraph: {
+                rich_text: [
+                  { type: 'text', text: { content: `수정일: ${tag.updatedAt?.toISOString() || '없음'}` } },
+                ],
+              },
+            },
+          ],
         })
         tagSuccessCount++
         console.log(`태그 "${tag.name}" 동기화 완료`)
@@ -1100,7 +1164,7 @@ export async function syncToNotion(
     }
     console.log(`태그 동기화 완료: ${tagSuccessCount}개 성공`)
   } else {
-    console.warn('태그 데이터베이스 ID가 없습니다.')
+    console.log('동기화할 태그가 없습니다.')
   }
 
   console.log('노션 동기화 완료!')
