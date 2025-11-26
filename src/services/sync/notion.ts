@@ -294,32 +294,40 @@ export async function initializeNotionDatabases(client: Client, rootPageId: stri
 
   const dbIds = getNotionDatabaseIds()
   
-  // 기존 작품 데이터베이스가 있으면 유효성 확인
+  // 기존 작품 데이터베이스가 있으면 유효성 및 속성 확인
   if (dbIds.works) {
     console.log('기존 작품 데이터베이스 발견. 유효성 확인 중...')
     const isValid = await verifyDatabase(client, dbIds.works)
     
     if (isValid) {
       try {
-        await ensureDatabaseProperties(client, dbIds.works, {
-          '제목': { title: {} },
-          '카테고리': { rich_text: {} },
-          '태그': { multi_select: { options: [] } },
-          '생성일': { date: {} },
-          '수정일': { date: {} },
-        })
+        // 데이터베이스 속성 확인
+        const database = await client.databases.retrieve({ database_id: dbIds.works })
+        // @ts-ignore
+        const existingProps = database.properties || {}
+        console.log('기존 데이터베이스 속성:', Object.keys(existingProps))
         
-        console.log('기존 데이터베이스 속성 확인 완료')
-        return dbIds
+        // 필수 속성이 모두 있는지 확인
+        const requiredProps = ['제목', '카테고리', '태그', '생성일', '수정일']
+        const hasAllProps = requiredProps.every(prop => existingProps[prop])
+        
+        if (hasAllProps) {
+          console.log('기존 데이터베이스 속성 확인 완료')
+          return dbIds
+        } else {
+          console.warn('기존 데이터베이스에 필수 속성이 없습니다. 새로 생성합니다.')
+          // 필수 속성이 없으면 새로 생성
+          setNotionDatabaseIds({})
+        }
       } catch (error: any) {
         // 아카이브된 부모 페이지 오류인 경우 새로 생성
         if (error?.message === 'ARCHIVED_PARENT' || error?.message?.includes('archived')) {
           console.warn('기존 데이터베이스의 부모 페이지가 아카이브되어 있습니다. 새로 생성합니다.')
           setNotionDatabaseIds({})
         } else {
-          console.warn('기존 데이터베이스 속성 확인 실패, 새로 생성합니다:', error)
+          console.warn('기존 데이터베이스 확인 실패, 새로 생성합니다:', error)
+          setNotionDatabaseIds({})
         }
-        // 속성 확인 실패 시 새로 생성
       }
     } else {
       console.warn('기존 데이터베이스가 유효하지 않습니다. 새로 생성합니다.')
