@@ -223,6 +223,8 @@ async function ensureDatabaseProperties(
     // @ts-ignore - Notion API types may not match exactly
     const existingProps = database.properties || {}
     
+    console.log(`데이터베이스 ${databaseId}의 기존 속성:`, Object.keys(existingProps))
+    
     // 필요한 속성들이 모두 있는지 확인
     const missingProps: Record<string, any> = {}
     for (const [propName, propDef] of Object.entries(expectedProperties)) {
@@ -230,6 +232,8 @@ async function ensureDatabaseProperties(
         missingProps[propName] = propDef
       }
     }
+    
+    console.log(`누락된 속성:`, Object.keys(missingProps))
     
     // 없는 속성 추가
     if (Object.keys(missingProps).length > 0) {
@@ -241,6 +245,24 @@ async function ensureDatabaseProperties(
           properties: missingProps,
         })
         console.log(`데이터베이스 ${databaseId}에 속성 추가 완료:`, Object.keys(missingProps))
+        
+        // 속성 추가 후 다시 확인
+        const updatedDatabase = await client.databases.retrieve({ database_id: databaseId })
+        // @ts-ignore
+        const updatedProps = updatedDatabase.properties || {}
+        console.log(`속성 추가 후 데이터베이스 속성:`, Object.keys(updatedProps))
+        
+        // 여전히 누락된 속성이 있는지 확인
+        const stillMissing: string[] = []
+        for (const propName of Object.keys(expectedProperties)) {
+          if (!updatedProps[propName]) {
+            stillMissing.push(propName)
+          }
+        }
+        if (stillMissing.length > 0) {
+          console.error(`속성 추가 후에도 여전히 누락된 속성:`, stillMissing)
+          throw new Error(`속성 추가 실패: ${stillMissing.join(', ')}`)
+        }
       } catch (error: any) {
         // 아카이브된 부모 페이지 오류인 경우 재시도하지 않음
         if (error?.message?.includes('archived')) {
@@ -250,6 +272,8 @@ async function ensureDatabaseProperties(
         console.warn(`데이터베이스 ${databaseId}에 속성 추가 실패:`, error)
         throw error
       }
+    } else {
+      console.log(`모든 속성이 이미 존재합니다.`)
     }
   } catch (error: any) {
     if (error?.message === 'ARCHIVED_PARENT') {
@@ -541,6 +565,31 @@ export async function syncToNotion(
     for (const work of data.works) {
       try {
         console.log(`작품 "${work.title}" 동기화 시도 중...`)
+        
+        // 데이터베이스 속성 다시 확인
+        try {
+          const db = await client.databases.retrieve({ database_id: dbIds.works })
+          // @ts-ignore
+          const dbProps = db.properties || {}
+          console.log(`작품 생성 전 데이터베이스 속성 확인:`, Object.keys(dbProps))
+          
+          // 필수 속성이 없으면 다시 추가 시도
+          const requiredProps = ['제목', '카테고리', '태그', '생성일', '수정일']
+          const missingRequired = requiredProps.filter(prop => !dbProps[prop])
+          if (missingRequired.length > 0) {
+            console.warn(`필수 속성이 누락되어 있습니다:`, missingRequired)
+            await ensureDatabaseProperties(client, dbIds.works, {
+              '제목': { title: {} },
+              '카테고리': { rich_text: {} },
+              '태그': { multi_select: { options: [] } },
+              '생성일': { date: {} },
+              '수정일': { date: {} },
+            })
+          }
+        } catch (error) {
+          console.warn('데이터베이스 속성 확인 실패:', error)
+        }
+        
         const properties = workToNotionProperties(work)
         console.log('작품 속성:', JSON.stringify(properties, null, 2))
         
