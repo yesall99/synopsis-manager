@@ -222,6 +222,10 @@ function episodeToNotionBlocks(episode: Episode): any[] {
             subscriberCount: episode.subscriberCount,
             viewCount: episode.viewCount,
             order: episode.order,
+            layoutMode: episode.layoutMode,
+            bodyWidth: episode.bodyWidth,
+            firstLineIndent: episode.firstLineIndent,
+            paragraphSpacing: episode.paragraphSpacing,
             createdAt: episode.createdAt?.toISOString(),
             updatedAt: episode.updatedAt?.toISOString(),
             syncedAt: episode.syncedAt?.toISOString(),
@@ -1841,8 +1845,8 @@ export async function syncToNotion(
           )
           
           if (statsIndex !== -1) {
-            // 통계 섹션이 있으면 해당 섹션부터 끝까지 삭제
-            const blocksToDelete = activeBlocks.slice(statsIndex)
+            // 통계 섹션이 있으면 해당 섹션부터 끝까지 삭제 (단, child_page는 제외)
+            const blocksToDelete = activeBlocks.slice(statsIndex).filter((b: any) => b.type !== 'child_page')
             for (const block of blocksToDelete) {
               try {
                 await client.blocks.delete({ block_id: block.id })
@@ -2087,6 +2091,173 @@ export async function syncToNotion(
     console.log('동기화할 태그가 없습니다.')
   }
 
+  // 8. 로컬에서 삭제된 항목을 노션에서도 archived 처리
+  console.log('로컬에서 삭제된 항목 확인 중...')
+  
+  // 로컬 데이터의 ID 집합 생성
+  const localWorkIds = new Set(data.works.map(w => w.id))
+  const localSynopsisIds = new Set(data.synopses.map(s => s.id))
+  const localCharacterIds = new Set(data.characters.map(c => c.id))
+  const localSettingIds = new Set(data.settings.map(s => s.id))
+  const localChapterIds = new Set(data.chapters.map(c => c.id))
+  const localEpisodeIds = new Set(data.episodes.map(e => e.id))
+  const localTagIds = new Set(data.tags.map(t => t.id))
+  const localTagCategoryIds = new Set(data.tagCategories.map(tc => tc.id))
+  
+  // 업데이트된 페이지 매핑 가져오기
+  const updatedPageMap = getNotionWorkPageMap()
+  
+  // 작품 삭제 확인
+  for (const [workId, pageInfo] of Object.entries(updatedPageMap)) {
+    if (workId === '__tags_page__') continue
+    
+    if (!localWorkIds.has(workId) && pageInfo.workPageId) {
+      try {
+        await client.pages.update({
+          page_id: pageInfo.workPageId,
+          archived: true,
+        })
+        console.log(`작품 페이지 archived: ${workId} (${pageInfo.workPageId})`)
+        // 페이지 매핑에서 제거
+        delete updatedPageMap[workId]
+      } catch (error) {
+        console.warn(`작품 페이지 archived 실패: ${workId}`, error)
+      }
+    } else if (localWorkIds.has(workId)) {
+      // 작품이 존재하면 하위 항목 확인
+      
+      // 시놉시스 삭제 확인
+      if (pageInfo.synopsisPageId) {
+        // 해당 작품의 시놉시스가 있는지 확인
+        const synopsisExists = data.synopses.some(s => s.workId === workId)
+        if (!synopsisExists) {
+          try {
+            await client.pages.update({
+              page_id: pageInfo.synopsisPageId,
+              archived: true,
+            })
+            console.log(`시놉시스 페이지 archived: ${pageInfo.synopsisPageId}`)
+            delete pageInfo.synopsisPageId
+          } catch (error) {
+            console.warn(`시놉시스 페이지 archived 실패: ${pageInfo.synopsisPageId}`, error)
+          }
+        }
+      }
+      
+      // 캐릭터 삭제 확인
+      if (pageInfo.characterPageIds) {
+        for (const [characterId, characterPageId] of Object.entries(pageInfo.characterPageIds)) {
+          if (!localCharacterIds.has(characterId)) {
+            try {
+              await client.pages.update({
+                page_id: characterPageId,
+                archived: true,
+              })
+              console.log(`캐릭터 페이지 archived: ${characterId} (${characterPageId})`)
+              delete pageInfo.characterPageIds[characterId]
+            } catch (error) {
+              console.warn(`캐릭터 페이지 archived 실패: ${characterId}`, error)
+            }
+          }
+        }
+      }
+      
+      // 설정 삭제 확인
+      if (pageInfo.settingPageIds) {
+        for (const [settingId, settingPageId] of Object.entries(pageInfo.settingPageIds)) {
+          if (!localSettingIds.has(settingId)) {
+            try {
+              await client.pages.update({
+                page_id: settingPageId,
+                archived: true,
+              })
+              console.log(`설정 페이지 archived: ${settingId} (${settingPageId})`)
+              delete pageInfo.settingPageIds[settingId]
+            } catch (error) {
+              console.warn(`설정 페이지 archived 실패: ${settingId}`, error)
+            }
+          }
+        }
+      }
+      
+      // 장 삭제 확인
+      if (pageInfo.chapterPageIds) {
+        for (const [chapterId, chapterPageId] of Object.entries(pageInfo.chapterPageIds)) {
+          if (!localChapterIds.has(chapterId)) {
+            try {
+              await client.pages.update({
+                page_id: chapterPageId,
+                archived: true,
+              })
+              console.log(`장 페이지 archived: ${chapterId} (${chapterPageId})`)
+              delete pageInfo.chapterPageIds[chapterId]
+            } catch (error) {
+              console.warn(`장 페이지 archived 실패: ${chapterId}`, error)
+            }
+          }
+        }
+      }
+      
+      // 회차 삭제 확인
+      if (pageInfo.episodePageIds) {
+        for (const [episodeId, episodePageId] of Object.entries(pageInfo.episodePageIds)) {
+          if (!localEpisodeIds.has(episodeId)) {
+            try {
+              await client.pages.update({
+                page_id: episodePageId,
+                archived: true,
+              })
+              console.log(`회차 페이지 archived: ${episodeId} (${episodePageId})`)
+              delete pageInfo.episodePageIds[episodeId]
+            } catch (error) {
+              console.warn(`회차 페이지 archived 실패: ${episodeId}`, error)
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  // 태그 카테고리 삭제 확인
+  const tagsPageData = updatedPageMap.__tags_page__
+  if (tagsPageData?.tagCategoryPageIds) {
+    for (const [categoryId, categoryPageId] of Object.entries(tagsPageData.tagCategoryPageIds)) {
+      if (!localTagCategoryIds.has(categoryId)) {
+        try {
+          await client.pages.update({
+            page_id: categoryPageId,
+            archived: true,
+          })
+          console.log(`태그 카테고리 페이지 archived: ${categoryId} (${categoryPageId})`)
+          delete tagsPageData.tagCategoryPageIds[categoryId]
+        } catch (error) {
+          console.warn(`태그 카테고리 페이지 archived 실패: ${categoryId}`, error)
+        }
+      }
+    }
+  }
+  
+  // 태그 삭제 확인
+  if (tagsPageData?.tagPageIds) {
+    for (const [tagId, tagPageId] of Object.entries(tagsPageData.tagPageIds)) {
+      if (!localTagIds.has(tagId)) {
+        try {
+          await client.pages.update({
+            page_id: tagPageId,
+            archived: true,
+          })
+          console.log(`태그 페이지 archived: ${tagId} (${tagPageId})`)
+          delete tagsPageData.tagPageIds[tagId]
+        } catch (error) {
+          console.warn(`태그 페이지 archived 실패: ${tagId}`, error)
+        }
+      }
+    }
+  }
+  
+  // 업데이트된 페이지 매핑 저장
+  setNotionWorkPageMap(updatedPageMap)
+  
   console.log('노션 동기화 완료!')
   console.log('작품 페이지를 열면 연결된 시놉시스, 캐릭터, 설정, 장, 회차가 Relation 속성으로 표시됩니다.')
   

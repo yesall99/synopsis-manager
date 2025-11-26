@@ -141,6 +141,8 @@ export default function SettingEdit() {
     if (confirm('정말 이 설정을 삭제하시겠습니까?')) {
       try {
         await deleteSetting(id)
+        // 삭제 후 노션 동기화
+        syncToNotionInBackground().catch(console.error)
         navigate(`/works/${workId}`, { state: { tab: 'settings' } })
       } catch (error) {
         console.error('삭제 실패:', error)

@@ -79,28 +79,29 @@ export async function syncToNotionInBackground(): Promise<void> {
     chapters.forEach(c => changedWorkIds.add(c.workId))
     episodes.forEach(e => changedWorkIds.add(e.workId))
     
-    // 변경된 데이터가 없으면 동기화 건너뛰기
+    // 삭제된 항목을 감지하기 위해 모든 데이터를 전달해야 함
+    // 변경된 데이터가 없어도 삭제 동기화를 위해 동기화 실행
     const hasChanges = works.length > 0 || synopses.length > 0 || characters.length > 0 || 
                        settings.length > 0 || episodes.length > 0 || chapters.length > 0 || 
                        tags.length > 0 || tagCategories.length > 0 || changedWorkIds.size > 0
     
-    if (!hasChanges) {
-      console.log('변경된 데이터가 없어 동기화를 건너뜁니다.')
-      useToastStore.getState().removeToast(toastId)
-      syncInProgress = false
-      currentToastId = null
-      return
-    }
-    
-    console.log('변경된 데이터:', {
-      works: works.length,
-      synopses: synopses.length,
-      characters: characters.length,
-      settings: settings.length,
-      episodes: episodes.length,
-      chapters: chapters.length,
-      tags: tags.length,
-      tagCategories: tagCategories.length,
+    console.log('동기화 데이터:', {
+      변경된_works: works.length,
+      변경된_synopses: synopses.length,
+      변경된_characters: characters.length,
+      변경된_settings: settings.length,
+      변경된_episodes: episodes.length,
+      변경된_chapters: chapters.length,
+      변경된_tags: tags.length,
+      변경된_tagCategories: tagCategories.length,
+      전체_works: allWorks.length,
+      전체_synopses: allSynopses.length,
+      전체_characters: allCharacters.length,
+      전체_settings: allSettings.length,
+      전체_episodes: allEpisodes.length,
+      전체_chapters: allChapters.length,
+      전체_tags: allTags.length,
+      전체_tagCategories: allTagCategories.length,
       changedWorkIds: changedWorkIds.size,
     })
     
@@ -125,6 +126,9 @@ export async function syncToNotionInBackground(): Promise<void> {
     const finalChapters = [...new Map([...chapters, ...relatedChapters].map(c => [c.id, c])).values()]
     const finalEpisodes = [...new Map([...episodes, ...relatedEpisodes].map(e => [e.id, e])).values()]
     
+    // 삭제된 항목을 감지하기 위해 모든 데이터를 전달 (syncToNotion에서 삭제 감지)
+    // 변경된 데이터가 없어도 삭제 동기화를 위해 동기화 실행
+    
     // 동기화 버전 확인 (가장 최근 동기화만 실행)
     if (syncVersion !== currentSyncVersion) {
       console.log('이 동기화는 취소되었습니다. 더 최근 동기화가 실행 중입니다.')
@@ -133,17 +137,18 @@ export async function syncToNotionInBackground(): Promise<void> {
     }
     
     // 동기화 실행
+    // 삭제된 항목을 감지하기 위해 모든 데이터를 전달 (syncToNotion에서 삭제 감지)
     let syncedIds
     try {
       syncedIds = await syncToNotion(client, {
-        works: finalWorks,
-        synopses: finalSynopses,
-        characters: finalCharacters,
-        settings: finalSettings,
-        episodes: finalEpisodes,
-        chapters: finalChapters,
-        tags: tags as any, // 타입 변환
-        tagCategories,
+        works: allWorks, // 모든 작품 전달 (삭제 감지를 위해)
+        synopses: allSynopses, // 모든 시놉시스 전달
+        characters: allCharacters, // 모든 캐릭터 전달
+        settings: allSettings, // 모든 설정 전달
+        episodes: allEpisodes, // 모든 회차 전달
+        chapters: allChapters, // 모든 장 전달
+        tags: allTags as any, // 모든 태그 전달
+        tagCategories: allTagCategories, // 모든 태그 카테고리 전달
       })
     } catch (syncError) {
       // 동기화 버전 확인 (에러 발생 시에도 취소되었는지 확인)

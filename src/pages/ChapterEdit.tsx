@@ -122,6 +122,8 @@ export default function ChapterEdit() {
     if (confirm('정말 이 장을 삭제하시겠습니까? 장에 속한 회차는 삭제되지 않습니다.')) {
       try {
         await deleteChapter(id)
+        // 삭제 후 노션 동기화
+        syncToNotionInBackground().catch(console.error)
         navigate(`/works/${workId}`, { state: { tab: 'episodes' } })
       } catch (error) {
         console.error('삭제 실패:', error)

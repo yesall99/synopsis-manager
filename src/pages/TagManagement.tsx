@@ -56,6 +56,9 @@ export default function TagManagement() {
       return
     }
     await deleteCategory(id)
+    // 삭제 후 노션 동기화
+    const { syncToNotionInBackground } = await import('@/utils/notionSync')
+    syncToNotionInBackground().catch(console.error)
   }
 
   const handleCreateTag = async () => {
@@ -84,6 +87,9 @@ export default function TagManagement() {
   const handleDeleteTag = async (id: string) => {
     if (!confirm('이 태그를 삭제하시겠습니까?')) return
     await deleteTag(id)
+    // 삭제 후 노션 동기화
+    const { syncToNotionInBackground } = await import('@/utils/notionSync')
+    syncToNotionInBackground().catch(console.error)
   }
 
   if (isLoading) {
@@ -128,22 +134,22 @@ export default function TagManagement() {
                   }}
                 />
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <button
-                    onClick={handleCreateCategory}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-900 dark:bg-gray-700 text-white hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors"
-                  >
-                    <Save className="w-4 h-4" />
+                <button
+                  onClick={handleCreateCategory}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-900 dark:bg-gray-700 text-white hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors"
+                >
+                  <Save className="w-4 h-4" />
                     <span className="hidden sm:inline">저장</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setIsNewCategory(false)
-                      setNewCategoryName('')
-                    }}
-                    className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsNewCategory(false)
+                    setNewCategoryName('')
+                  }}
+                  className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
                 </div>
               </div>
             )}

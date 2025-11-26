@@ -146,9 +146,6 @@ export default function SynopsisEdit() {
         <div className="space-y-6">
           {/* Structure Editor */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              기/승/전/결 구조
-            </label>
             <SynopsisStructureEditor structure={structure} onChange={setStructure} />
           </div>
         </div>

@@ -10,6 +10,11 @@ export interface Episode {
   subscriberCount?: number // 선작수 (작품 전체)
   viewCount?: number // 조회수 (회차별)
   order?: number // 정렬 순서
+  // 본문 설정
+  layoutMode?: 'scroll' | 'page' // 레이아웃 모드: 스크롤/페이지
+  bodyWidth?: 400 | 600 | 800 // 본문 폭 (px)
+  firstLineIndent?: 'none' | '0.5' | '1' | '2' // 첫 줄 들여쓰기: 없음, 0.5칸, 1칸, 2칸
+  paragraphSpacing?: 'none' | '0.5' | '1' | '2' // 문단 사이 간격: 없음, 0.5줄, 1줄, 2줄
   createdAt: Date
   updatedAt: Date
   syncedAt?: Date

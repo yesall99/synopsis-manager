@@ -652,54 +652,222 @@ function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                   
                                   const data = await syncFromNotion(client)
                                   
-                                  // 기존 데이터 삭제
+                                  // 노션에서 가져온 데이터 저장 (이미 ID가 있으므로 직접 IndexedDB에 저장)
+                                  const { addWork, addSynopsis, addCharacter, addSetting, addChapter, addEpisode, deleteWork, deleteSynopsis, deleteCharacter, deleteSetting, deleteChapter, deleteEpisode, deleteTag, deleteTagCategory } = await import('@/services/storage/indexedDB')
+                                  const { addTagCategory, addTag } = await import('@/services/storage/indexedDB')
+                                  const { getNotionWorkPageMap } = await import('@/services/sync/notion')
+                                  
+                                  // 기존 데이터 가져오기 (삭제 동기화를 위해)
                                   const existingWorks = await workService.getAll()
-                                  for (const work of existingWorks) {
-                                    await workService.delete(work.id)
+                                  const existingSynopses = await synopsisService.getAll()
+                                  const existingCharacters = await characterService.getAll()
+                                  const existingSettings = await settingService.getAll()
+                                  const existingChapters = await chapterService.getAll()
+                                  const existingEpisodes = await episodeService.getAll()
+                                  const existingTags = await tagService.getAll()
+                                  const existingTagCategories = await tagCategoryService.getAll()
+                                  
+                                  // 노션에서 가져온 데이터의 ID 집합 생성
+                                  const notionWorkIds = new Set(data.works.map(w => w.id))
+                                  const notionSynopsisIds = new Set(data.synopses.map(s => s.id))
+                                  const notionCharacterIds = new Set(data.characters.map(c => c.id))
+                                  const notionSettingIds = new Set(data.settings.map(s => s.id))
+                                  const notionChapterIds = new Set(data.chapters.map(c => c.id))
+                                  const notionEpisodeIds = new Set(data.episodes.map(e => e.id))
+                                  const notionTagIds = new Set(data.tags.map(t => t.id))
+                                  const notionTagCategoryIds = new Set(data.tagCategories.map(tc => tc.id))
+                                  
+                                  // 저장된 페이지 ID 매핑 가져오기
+                                  const pageMap = getNotionWorkPageMap()
+                                  
+                                  // 노션 페이지 존재 여부 확인 함수
+                                  const checkPageExists = async (pageId: string | undefined): Promise<boolean> => {
+                                    if (!pageId) return false
+                                    try {
+                                      const page = await client.pages.retrieve({ page_id: pageId })
+                                      return !(page as any).archived
+                                    } catch (e: any) {
+                                      // object_not_found 에러는 페이지가 삭제된 것
+                                      if (e?.code === 'object_not_found') {
+                                        return false
+                                      }
+                                      // 다른 에러는 존재하는 것으로 간주 (권한 문제 등)
+                                      return true
+                                    }
                                   }
                                   
-                                  // 노션에서 가져온 데이터 저장 (이미 ID가 있으므로 직접 IndexedDB에 저장)
-                                  const { addWork, addSynopsis, addCharacter, addSetting, addChapter, addEpisode } = await import('@/services/storage/indexedDB')
-                                  const { addTagCategory, addTag } = await import('@/services/storage/indexedDB')
+                                  // 로컬에만 있는 항목 삭제 (노션에서 삭제된 항목)
+                                  for (const work of existingWorks) {
+                                    if (!notionWorkIds.has(work.id)) {
+                                      // 저장된 페이지 ID가 있으면 노션에서 확인
+                                      const workPageId = pageMap[work.id]?.workPageId
+                                      if (workPageId) {
+                                        const exists = await checkPageExists(workPageId)
+                                        if (!exists) {
+                                          await deleteWork(work.id)
+                                          console.log(`작품 삭제 (노션에서 삭제됨): id=${work.id}, title=${work.title}`)
+                                        }
+                                      } else {
+                                        // 페이지 ID가 없으면 노션에 없는 것으로 간주
+                                        await deleteWork(work.id)
+                                        console.log(`작품 삭제 (노션에 없음): id=${work.id}, title=${work.title}`)
+                                      }
+                                    }
+                                  }
                                   
+                                  for (const synopsis of existingSynopses) {
+                                    if (!notionSynopsisIds.has(synopsis.id)) {
+                                      const synopsisPageId = pageMap[synopsis.workId]?.synopsisPageId
+                                      if (synopsisPageId) {
+                                        const exists = await checkPageExists(synopsisPageId)
+                                        if (!exists) {
+                                          await deleteSynopsis(synopsis.id)
+                                          console.log(`시놉시스 삭제 (노션에서 삭제됨): id=${synopsis.id}`)
+                                        }
+                                      } else {
+                                        await deleteSynopsis(synopsis.id)
+                                        console.log(`시놉시스 삭제 (노션에 없음): id=${synopsis.id}`)
+                                      }
+                                    }
+                                  }
+                                  
+                                  for (const character of existingCharacters) {
+                                    if (!notionCharacterIds.has(character.id)) {
+                                      const characterPageId = pageMap[character.workId]?.characterPageIds?.[character.id]
+                                      if (characterPageId) {
+                                        const exists = await checkPageExists(characterPageId)
+                                        if (!exists) {
+                                          await deleteCharacter(character.id)
+                                          console.log(`캐릭터 삭제 (노션에서 삭제됨): id=${character.id}`)
+                                        }
+                                      } else {
+                                        await deleteCharacter(character.id)
+                                        console.log(`캐릭터 삭제 (노션에 없음): id=${character.id}`)
+                                      }
+                                    }
+                                  }
+                                  
+                                  for (const setting of existingSettings) {
+                                    if (!notionSettingIds.has(setting.id)) {
+                                      const settingPageId = pageMap[setting.workId]?.settingPageIds?.[setting.id]
+                                      if (settingPageId) {
+                                        const exists = await checkPageExists(settingPageId)
+                                        if (!exists) {
+                                          await deleteSetting(setting.id)
+                                          console.log(`설정 삭제 (노션에서 삭제됨): id=${setting.id}`)
+                                        }
+                                      } else {
+                                        await deleteSetting(setting.id)
+                                        console.log(`설정 삭제 (노션에 없음): id=${setting.id}`)
+                                      }
+                                    }
+                                  }
+                                  
+                                  for (const chapter of existingChapters) {
+                                    if (!notionChapterIds.has(chapter.id)) {
+                                      const chapterPageId = pageMap[chapter.workId]?.chapterPageIds?.[chapter.id]
+                                      if (chapterPageId) {
+                                        const exists = await checkPageExists(chapterPageId)
+                                        if (!exists) {
+                                          await deleteChapter(chapter.id)
+                                          console.log(`장 삭제 (노션에서 삭제됨): id=${chapter.id}`)
+                                        }
+                                      } else {
+                                        await deleteChapter(chapter.id)
+                                        console.log(`장 삭제 (노션에 없음): id=${chapter.id}`)
+                                      }
+                                    }
+                                  }
+                                  
+                                  for (const episode of existingEpisodes) {
+                                    if (!notionEpisodeIds.has(episode.id)) {
+                                      const episodePageId = pageMap[episode.workId]?.episodePageIds?.[episode.id]
+                                      if (episodePageId) {
+                                        const exists = await checkPageExists(episodePageId)
+                                        if (!exists) {
+                                          await deleteEpisode(episode.id)
+                                          console.log(`회차 삭제 (노션에서 삭제됨): id=${episode.id}`)
+                                        }
+                                      } else {
+                                        await deleteEpisode(episode.id)
+                                        console.log(`회차 삭제 (노션에 없음): id=${episode.id}`)
+                                      }
+                                    }
+                                  }
+                                  
+                                  // 태그 카테고리 삭제 (태그보다 먼저)
+                                  for (const category of existingTagCategories) {
+                                    if (!notionTagCategoryIds.has(category.id)) {
+                                      const tagCategoryPageId = pageMap.__tags_page__?.tagCategoryPageIds?.[category.id]
+                                      if (tagCategoryPageId) {
+                                        const exists = await checkPageExists(tagCategoryPageId)
+                                        if (!exists) {
+                                          await deleteTagCategory(category.id)
+                                          console.log(`태그 카테고리 삭제 (노션에서 삭제됨): id=${category.id}`)
+                                        }
+                                      } else {
+                                        await deleteTagCategory(category.id)
+                                        console.log(`태그 카테고리 삭제 (노션에 없음): id=${category.id}`)
+                                      }
+                                    }
+                                  }
+                                  
+                                  // 태그 삭제
+                                  for (const tag of existingTags) {
+                                    if (!notionTagIds.has(tag.id)) {
+                                      const tagPageId = pageMap.__tags_page__?.tagPageIds?.[tag.id]
+                                      if (tagPageId) {
+                                        const exists = await checkPageExists(tagPageId)
+                                        if (!exists) {
+                                          await deleteTag(tag.id)
+                                          console.log(`태그 삭제 (노션에서 삭제됨): id=${tag.id}`)
+                                        }
+                                      } else {
+                                        await deleteTag(tag.id)
+                                        console.log(`태그 삭제 (노션에 없음): id=${tag.id}`)
+                                      }
+                                    }
+                                  }
+                                  
+                                  // 노션에서 가져온 데이터 저장 (isDirty: false로 설정하여 동기화된 상태로 표시)
                                   if (data.works && data.works.length > 0) {
                                     for (const work of data.works) {
-                                      await addWork(work)
+                                      await addWork({ ...work, isDirty: false })
                                       console.log(`작품 저장: id=${work.id}, title=${work.title}`)
                                     }
                                   }
                                   
                                   if (data.synopses && data.synopses.length > 0) {
                                     for (const synopsis of data.synopses) {
-                                      await addSynopsis(synopsis)
+                                      await addSynopsis({ ...synopsis, isDirty: false })
                                       console.log(`시놉시스 저장: id=${synopsis.id}, workId=${synopsis.workId}`)
                                     }
                                   }
                                   
                                   if (data.characters && data.characters.length > 0) {
                                     for (const character of data.characters) {
-                                      await addCharacter(character)
+                                      await addCharacter({ ...character, isDirty: false })
                                       console.log(`캐릭터 저장: id=${character.id}, workId=${character.workId}`)
                                     }
                                   }
                                   
                                   if (data.settings && data.settings.length > 0) {
                                     for (const setting of data.settings) {
-                                      await addSetting(setting)
+                                      await addSetting({ ...setting, isDirty: false })
                                       console.log(`설정 저장: id=${setting.id}, workId=${setting.workId}`)
                                     }
                                   }
                                   
                                   if (data.chapters && data.chapters.length > 0) {
                                     for (const chapter of data.chapters) {
-                                      await addChapter(chapter)
+                                      await addChapter({ ...chapter, isDirty: false })
                                       console.log(`장 저장: id=${chapter.id}, workId=${chapter.workId}`)
                                     }
                                   }
                                   
                                   if (data.episodes && data.episodes.length > 0) {
                                     for (const episode of data.episodes) {
-                                      await addEpisode(episode)
+                                      await addEpisode({ ...episode, isDirty: false })
                                       console.log(`회차 저장: id=${episode.id}, workId=${episode.workId}`)
                                     }
                                   }
@@ -707,7 +875,7 @@ function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                   // 태그 카테고리를 먼저 저장
                                   if (data.tagCategories && data.tagCategories.length > 0) {
                                     for (const category of data.tagCategories) {
-                                      await addTagCategory(category)
+                                      await addTagCategory({ ...category, isDirty: false })
                                       console.log(`태그 카테고리 저장: id=${category.id}, name=${category.name}`)
                                     }
                                   }
@@ -719,7 +887,7 @@ function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                   if (data.tags && data.tags.length > 0) {
                                     for (const tag of data.tags) {
                                       try {
-                                        await addTag(tag)
+                                        await addTag({ ...tag, isDirty: false })
                                         console.log(`태그 저장 성공: id=${tag.id}, name=${tag.name}, categoryId=${tag.categoryId}`)
                                       } catch (tagError) {
                                         console.error(`태그 저장 실패: ${tag.name}`, tagError)

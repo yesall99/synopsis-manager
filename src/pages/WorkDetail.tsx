@@ -206,6 +206,9 @@ export default function WorkDetail() {
     }
     try {
       await deleteWork(workId)
+      // 삭제 후 노션 동기화
+      const { syncToNotionInBackground } = await import('@/utils/notionSync')
+      syncToNotionInBackground().catch(console.error)
       navigate('/works')
     } catch (error) {
       console.error('삭제 실패:', error)

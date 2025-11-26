@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { BookOpen, Users, Settings as SettingsIcon, Tags, ArrowLeft, Menu, X as XIcon } from 'lucide-react'
+import { BookOpen, Users, Settings as SettingsIcon, Tags, ArrowLeft, Menu, X as XIcon, Moon, Sun } from 'lucide-react'
 import SettingsModal from '@/components/SettingsModal'
+import { useThemeStore } from '@/stores/themeStore'
 
 export default function Layout() {
   const location = useLocation()
@@ -9,6 +10,7 @@ export default function Layout() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
   const [currentDateTime, setCurrentDateTime] = useState(new Date())
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const { theme, toggleTheme } = useThemeStore()
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -174,9 +176,23 @@ export default function Layout() {
 
         {/* Date Time */}
         <div className="p-3 border-t border-gray-100 dark:border-gray-700 flex-shrink-0">
-          <p className="text-sm text-gray-600 dark:text-gray-300 text-center font-medium">
-            {formatDateTime(currentDateTime)}
-          </p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm text-gray-600 dark:text-gray-300 font-medium flex-1 text-center">
+              {formatDateTime(currentDateTime)}
+            </p>
+            <button
+              onClick={toggleTheme}
+              className="p-1.5 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+              type="button"
+              aria-label={theme === 'dark' ? '라이트 모드로 전환' : '다크 모드로 전환'}
+            >
+              {theme === 'dark' ? (
+                <Moon className="w-4 h-4" />
+              ) : (
+                <Sun className="w-4 h-4" />
+              )}
+            </button>
+          </div>
         </div>
       </aside>
 

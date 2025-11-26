@@ -142,6 +142,8 @@ export default function CharacterEdit() {
     if (confirm('정말 이 캐릭터를 삭제하시겠습니까?')) {
       try {
         await deleteCharacter(id)
+        // 삭제 후 노션 동기화
+        syncToNotionInBackground().catch(console.error)
         navigate(`/works/${workId}`, { state: { tab: 'characters' } })
       } catch (error) {
         console.error('삭제 실패:', error)

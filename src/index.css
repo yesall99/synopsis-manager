@@ -66,6 +66,14 @@
   font-display: swap;
 }
 
+/* Ridibatang Font */
+@font-face {
+  font-family: 'Ridibatang';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_twelve@1.0/RIDIBatang.woff') format('woff');
+  font-weight: normal;
+  font-display: swap;
+}
+
 body {
   margin: 0;
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -90,33 +98,56 @@ body {
 /* Tiptap Editor Styles */
 .ProseMirror {
   outline: none;
-  font-size: 16px !important; /* 모바일에서 자동 확대 방지 */
+  font-size: 18px !important; /* 기본 폰트 크기 */
+  line-height: 1.8 !important; /* 항상 1.8 고정 */
+  font-family: var(--editor-font-family, 'Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif') !important;
 }
 
-/* ProseMirror 내부의 모든 텍스트 요소에 최소 폰트 크기 보장 */
+/* ProseMirror 내부의 모든 텍스트 요소에 기본 폰트 크기 및 line-height 적용 */
 .ProseMirror p,
 .ProseMirror div,
-.ProseMirror span,
 .ProseMirror li,
 .ProseMirror ul,
 .ProseMirror ol {
-  font-size: 16px !important;
+  font-size: 18px !important; /* 기본 폰트 크기 */
+  line-height: 1.8 !important; /* 항상 1.8 고정 */
 }
 
-/* prose 클래스가 적용된 ProseMirror도 최소 폰트 크기 보장 */
+/* 폰트 크기가 설정되지 않은 span만 기본 폰트 크기 적용 (data-font-size가 있는 span은 제외) */
+.ProseMirror span:not([data-font-size]) {
+  font-size: 18px !important; /* 기본 폰트 크기 */
+  line-height: 1.8 !important; /* 항상 1.8 고정 */
+}
+
+/* data-font-size가 있는 span은 폰트 크기는 인라인 스타일로 적용, line-height는 항상 1.8 */
+.ProseMirror span[data-font-size] {
+  line-height: 1.8 !important; /* 항상 1.8 고정 */
+  /* font-size는 인라인 스타일로 설정되므로 여기서는 제외 */
+}
+
+/* prose 클래스가 적용된 ProseMirror도 기본 폰트 크기 보장 */
 .prose.ProseMirror,
 .ProseMirror.prose {
-  font-size: 16px !important;
+  font-size: 18px !important; /* 기본 폰트 크기 */
+  line-height: 1.8 !important; /* 항상 1.8 고정 */
 }
 
 .prose.ProseMirror p,
 .ProseMirror.prose p,
 .prose.ProseMirror div,
-.ProseMirror.prose div,
-.prose.ProseMirror span,
-.ProseMirror.prose span {
-  font-size: 16px !important;
+.ProseMirror.prose div {
+  font-size: 18px !important; /* 기본 폰트 크기 */
+  line-height: 1.8 !important; /* 항상 1.8 고정 */
 }
+
+/* 폰트 크기가 설정되지 않은 span만 기본 폰트 크기 적용 */
+.prose.ProseMirror span:not([style*="font-size"]),
+.ProseMirror.prose span:not([style*="font-size"]) {
+  font-size: 18px !important; /* 기본 폰트 크기 */
+  line-height: 1.8 !important; /* 항상 1.8 고정 */
+}
+
+/* 회차 보기 모드에서 폰트 적용 - inherit 제거하여 인라인 스타일이 작동하도록 */
 
 .ProseMirror p.is-editor-empty:first-child::before {
   color: #adb5bd;
