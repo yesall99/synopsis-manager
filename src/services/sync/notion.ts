@@ -1067,13 +1067,7 @@ export async function syncToNotion(
   }
 
   // 7. Tags 동기화 (루트 페이지 하위에 "태그" 페이지 생성)
-  const rootPageId = getRootPageId()
-  if (!rootPageId) {
-    throw new Error('Root page ID is required. Please connect to Notion first.')
-  }
-  
-  // 기존 태그 페이지 ID 확인
-  const existingPageMap = getNotionWorkPageMap()
+  // rootPageId와 existingPageMap은 이미 위에서 선언됨
   const tagsPageIdKey = '__tags_page__'
   let tagsPageId = existingPageMap[tagsPageIdKey]?.workPageId
   
@@ -1128,15 +1122,9 @@ export async function syncToNotion(
               object: 'block',
               type: 'paragraph',
               paragraph: {
-                rich_text: (() => {
-                  const texts: Array<{ type: 'text'; text: { content: string } }> = [
-                    { type: 'text', text: { content: `카테고리: ${tag.categoryId || '없음'}` } },
-                  ]
-                  if (tag.color) {
-                    texts.push({ type: 'text', text: { content: ` | 색상: ${tag.color}` } })
-                  }
-                  return texts
-                })(),
+                rich_text: [
+                  { type: 'text', text: { content: `카테고리: ${tag.categoryId || '없음'}` } },
+                ],
               },
             },
             {
