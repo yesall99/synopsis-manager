@@ -320,14 +320,8 @@ export async function initializeNotionDatabases(client: Client, rootPageId: stri
           setNotionDatabaseIds({})
         }
       } catch (error: any) {
-        // 아카이브된 부모 페이지 오류인 경우 새로 생성
-        if (error?.message === 'ARCHIVED_PARENT' || error?.message?.includes('archived')) {
-          console.warn('기존 데이터베이스의 부모 페이지가 아카이브되어 있습니다. 새로 생성합니다.')
-          setNotionDatabaseIds({})
-        } else {
-          console.warn('기존 데이터베이스 확인 실패, 새로 생성합니다:', error)
-          setNotionDatabaseIds({})
-        }
+        console.warn('기존 데이터베이스 확인 실패, 새로 생성합니다:', error)
+        setNotionDatabaseIds({})
       }
     } else {
       console.warn('기존 데이터베이스가 유효하지 않습니다. 새로 생성합니다.')
@@ -574,28 +568,39 @@ export async function syncToNotion(
       try {
         console.log(`작품 "${work.title}" 동기화 시도 중...`)
         
-        // 데이터베이스 속성 다시 확인
+        // 데이터베이스 속성 확인 (없으면 새로 생성)
         try {
           const db = await client.databases.retrieve({ database_id: dbIds.works })
           // @ts-ignore
           const dbProps = db.properties || {}
           console.log(`작품 생성 전 데이터베이스 속성 확인:`, Object.keys(dbProps))
           
-          // 필수 속성이 없으면 다시 추가 시도
+          // 필수 속성이 없으면 새 데이터베이스 생성
           const requiredProps = ['제목', '카테고리', '태그', '생성일', '수정일']
           const missingRequired = requiredProps.filter(prop => !dbProps[prop])
           if (missingRequired.length > 0) {
-            console.warn(`필수 속성이 누락되어 있습니다:`, missingRequired)
-            await ensureDatabaseProperties(client, dbIds.works, {
-              '제목': { title: {} },
-              '카테고리': { rich_text: {} },
-              '태그': { multi_select: { options: [] } },
-              '생성일': { date: {} },
-              '수정일': { date: {} },
-            })
+            console.warn(`필수 속성이 누락되어 있습니다. 새 데이터베이스를 생성합니다:`, missingRequired)
+            const rootPageId = getRootPageId()
+            if (rootPageId) {
+              const newDbIds = await initializeNotionDatabases(client, rootPageId)
+              dbIds.works = newDbIds.works
+              setNotionDatabaseIds(newDbIds)
+              console.log(`새 데이터베이스 생성 완료:`, dbIds.works)
+            } else {
+              throw new Error('Root page ID가 없어서 새 데이터베이스를 생성할 수 없습니다.')
+            }
           }
         } catch (error) {
-          console.warn('데이터베이스 속성 확인 실패:', error)
+          console.warn('데이터베이스 속성 확인 실패, 새 데이터베이스 생성 시도:', error)
+          const rootPageId = getRootPageId()
+          if (rootPageId) {
+            const newDbIds = await initializeNotionDatabases(client, rootPageId)
+            dbIds.works = newDbIds.works
+            setNotionDatabaseIds(newDbIds)
+            console.log(`새 데이터베이스 생성 완료:`, dbIds.works)
+          } else {
+            throw new Error('Root page ID가 없어서 새 데이터베이스를 생성할 수 없습니다.')
+          }
         }
         
         const properties = workToNotionProperties(work)
@@ -652,131 +657,125 @@ export async function syncToNotion(
 
     // 2-1. 시놉시스 페이지 생성 (작품 페이지 하위)
     const synopsis = data.synopses.find(s => s.workId === work.id)
-    if (synopsis) {
-      try {
-        const structureJson = JSON.stringify(synopsis.structure)
-        await client.pages.create({
-          parent: { page_id: workPageId },
-          properties: {
-            title: {
-              title: [{ text: { content: '시놉시스' } }],
+    try {
+      const structureJson = synopsis ? JSON.stringify(synopsis.structure) : '{}'
+      await client.pages.create({
+        parent: { page_id: workPageId },
+        properties: {
+          title: {
+            title: [{ text: { content: '시놉시스' } }],
+          },
+        },
+        children: [
+          {
+            object: 'block',
+            type: 'paragraph',
+            paragraph: {
+              rich_text: [
+                {
+                  type: 'text',
+                  text: { content: structureJson },
+                },
+              ],
             },
           },
-          children: [
-            {
-              object: 'block',
-              type: 'paragraph',
-              paragraph: {
-                rich_text: [
-                  {
-                    type: 'text',
-                    text: { content: structureJson },
-                  },
-                ],
-              },
-            },
-          ],
-        })
-        console.log(`작품 "${work.title}"의 시놉시스 페이지 생성 완료`)
-      } catch (error) {
-        console.error(`작품 "${work.title}"의 시놉시스 페이지 생성 실패:`, error)
-      }
+        ],
+      })
+      console.log(`작품 "${work.title}"의 시놉시스 페이지 생성 완료`)
+    } catch (error) {
+      console.error(`작품 "${work.title}"의 시놉시스 페이지 생성 실패:`, error)
     }
 
     // 2-2. 캐릭터 페이지들 생성 (작품 페이지 하위)
     const characters = data.characters.filter(c => c.workId === work.id)
-    if (characters.length > 0) {
-      try {
-        const charactersPage = await client.pages.create({
-          parent: { page_id: workPageId },
-          properties: {
-            title: {
-              title: [{ text: { content: '캐릭터' } }],
-            },
+    try {
+      const charactersPage = await client.pages.create({
+        parent: { page_id: workPageId },
+        properties: {
+          title: {
+            title: [{ text: { content: '캐릭터' } }],
           },
-        })
-        
-        // 각 캐릭터를 하위 페이지로 생성
-        for (const character of characters) {
-          try {
-            await client.pages.create({
-              parent: { page_id: charactersPage.id },
-              properties: {
-                title: {
-                  title: [{ text: { content: character.name } }],
+        },
+      })
+      
+      // 각 캐릭터를 하위 페이지로 생성 (없어도 빈 페이지는 생성됨)
+      for (const character of characters) {
+        try {
+          await client.pages.create({
+            parent: { page_id: charactersPage.id },
+            properties: {
+              title: {
+                title: [{ text: { content: character.name || '이름 없음' } }],
+              },
+            },
+            children: character.description ? [
+              {
+                object: 'block',
+                type: 'paragraph',
+                paragraph: {
+                  rich_text: [
+                    {
+                      type: 'text',
+                      text: { content: character.description },
+                    },
+                  ],
                 },
               },
-              children: [
-                {
-                  object: 'block',
-                  type: 'paragraph',
-                  paragraph: {
-                    rich_text: [
-                      {
-                        type: 'text',
-                        text: { content: character.description || '' },
-                      },
-                    ],
-                  },
-                },
-              ],
-            })
-          } catch (error) {
-            console.error(`캐릭터 "${character.name}" 페이지 생성 실패:`, error)
-          }
+            ] : [],
+          })
+        } catch (error) {
+          console.error(`캐릭터 "${character.name}" 페이지 생성 실패:`, error)
         }
-        console.log(`작품 "${work.title}"의 캐릭터 페이지 생성 완료 (${characters.length}개)`)
-      } catch (error) {
-        console.error(`작품 "${work.title}"의 캐릭터 페이지 생성 실패:`, error)
       }
+      console.log(`작품 "${work.title}"의 캐릭터 페이지 생성 완료 (${characters.length}개)`)
+    } catch (error) {
+      console.error(`작품 "${work.title}"의 캐릭터 페이지 생성 실패:`, error)
     }
 
     // 2-3. 설정 페이지들 생성 (작품 페이지 하위)
     const settings = data.settings.filter(s => s.workId === work.id)
-    if (settings.length > 0) {
-      try {
-        const settingsPage = await client.pages.create({
-          parent: { page_id: workPageId },
-          properties: {
-            title: {
-              title: [{ text: { content: '설정' } }],
-            },
+    try {
+      const settingsPage = await client.pages.create({
+        parent: { page_id: workPageId },
+        properties: {
+          title: {
+            title: [{ text: { content: '설정' } }],
           },
-        })
-        
-        // 각 설정을 하위 페이지로 생성
-        for (const setting of settings) {
-          try {
-            await client.pages.create({
-              parent: { page_id: settingsPage.id },
-              properties: {
-                title: {
-                  title: [{ text: { content: setting.name } }],
+        },
+      })
+      
+      // 각 설정을 하위 페이지로 생성 (없어도 빈 페이지는 생성됨)
+      for (const setting of settings) {
+        try {
+          await client.pages.create({
+            parent: { page_id: settingsPage.id },
+            properties: {
+              title: {
+                title: [{ text: { content: setting.name || '이름 없음' } }],
+              },
+            },
+            children: setting.description ? [
+              {
+                object: 'block',
+                type: 'paragraph',
+                paragraph: {
+                  rich_text: [
+                    {
+                      type: 'text',
+                      text: { content: setting.description },
+                    },
+                  ],
                 },
               },
-              children: [
-                {
-                  object: 'block',
-                  type: 'paragraph',
-                  paragraph: {
-                    rich_text: [
-                      {
-                        type: 'text',
-                        text: { content: setting.description || '' },
-                      },
-                    ],
-                  },
-                },
-              ],
-            })
-          } catch (error) {
-            console.error(`설정 "${setting.name}" 페이지 생성 실패:`, error)
-          }
+            ] : [],
+          })
+        } catch (error) {
+          console.error(`설정 "${setting.name}" 페이지 생성 실패:`, error)
         }
-        console.log(`작품 "${work.title}"의 설정 페이지 생성 완료 (${settings.length}개)`)
-      } catch (error) {
-        console.error(`작품 "${work.title}"의 설정 페이지 생성 실패:`, error)
       }
+      console.log(`작품 "${work.title}"의 설정 페이지 생성 완료 (${settings.length}개)`)
+    } catch (error) {
+      console.error(`작품 "${work.title}"의 설정 페이지 생성 실패:`, error)
     }
 
     // 2-4. 연재 페이지 내부에 장과 회차 생성
