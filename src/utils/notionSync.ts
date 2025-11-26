@@ -37,6 +37,7 @@ export async function syncToNotionInBackground(): Promise<void> {
     const settings = await settingService.getAll()
     const episodes = await episodeService.getAll()
     const chapters = await chapterService.getAll()
+    // @ts-ignore - tagService.getAll()의 반환 타입이 Tag[]와 다를 수 있음
     const tags = await tagService.getAll()
     
     // 동기화 실행
@@ -47,7 +48,7 @@ export async function syncToNotionInBackground(): Promise<void> {
       settings,
       episodes,
       chapters,
-      tags,
+      tags: tags as any, // 타입 변환
     })
     
     // 성공 토스트

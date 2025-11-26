@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Save, ArrowLeft, Trash2, Loader2 } from 'lucide-react'
 import { useEpisodeStore } from '@/stores/episodeStore'
 import { useChapterStore } from '@/stores/chapterStore'
+import { syncToNotionInBackground } from '@/utils/notionSync'
 import SynopsisEditor from '@/components/SynopsisEditor'
 
 export default function EpisodeEdit() {

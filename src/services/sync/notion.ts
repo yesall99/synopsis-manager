@@ -125,7 +125,7 @@ export function setNotionWorkPageMap(map: NotionWorkPageMap): void {
 }
 
 export function updateNotionWorkPage(workId: string, pageIds: {
-  workPageId: string
+  workPageId?: string
   synopsisPageId?: string
   charactersPageId?: string
   settingsPageId?: string
@@ -134,9 +134,13 @@ export function updateNotionWorkPage(workId: string, pageIds: {
   characterPageIds?: Record<string, string>
   settingPageIds?: Record<string, string>
   episodePageIds?: Record<string, string>
+  tagPageIds?: Record<string, string>
 }): void {
   const map = getNotionWorkPageMap()
-  map[workId] = { ...map[workId], ...pageIds }
+  if (!map[workId]) {
+    map[workId] = { workPageId: '' } as any
+  }
+  map[workId] = { ...map[workId], ...pageIds } as any
   setNotionWorkPageMap(map)
 }
 
@@ -928,11 +932,11 @@ export async function syncToNotion(
     const workPageId = workPageMap.get(work.id)
     if (!workPageId) continue
 
-    const existingPageIds = existingPageMap[work.id] || {}
-    const characterPageIds: Record<string, string> = existingPageIds.characterPageIds || {}
-    const settingPageIds: Record<string, string> = existingPageIds.settingPageIds || {}
-    const chapterPageIds: Record<string, string> = existingPageIds.chapterPageIds || {}
-    const episodePageIds: Record<string, string> = existingPageIds.episodePageIds || {}
+    const existingPageIds = existingPageMap[work.id] || {} as any
+    const characterPageIds: Record<string, string> = (existingPageIds as any).characterPageIds || {}
+    const settingPageIds: Record<string, string> = (existingPageIds as any).settingPageIds || {}
+    const chapterPageIds: Record<string, string> = (existingPageIds as any).chapterPageIds || {}
+    const episodePageIds: Record<string, string> = (existingPageIds as any).episodePageIds || {}
 
     // 2-1. 시놉시스 페이지 생성/업데이트 (작품 페이지 하위)
     const synopsis = data.synopses.find(s => s.workId === work.id)
@@ -941,7 +945,7 @@ export async function syncToNotion(
       const synopsisPageId = await updateOrCreatePage(
         client,
         workPageId,
-        existingPageIds.synopsisPageId,
+        (existingPageIds as any).synopsisPageId,
         '시놉시스',
         [
           {
@@ -958,7 +962,7 @@ export async function syncToNotion(
           },
         ]
       )
-      updateNotionWorkPage(work.id, { synopsisPageId })
+      updateNotionWorkPage(work.id, { workPageId, synopsisPageId })
       console.log(`작품 "${work.title}"의 시놉시스 페이지 동기화 완료`)
     } catch (error) {
       console.error(`작품 "${work.title}"의 시놉시스 페이지 동기화 실패:`, error)
@@ -970,12 +974,12 @@ export async function syncToNotion(
       const charactersPageId = await updateOrCreatePage(
         client,
         workPageId,
-        existingPageIds.charactersPageId,
+        (existingPageIds as any).charactersPageId,
         '캐릭터',
         []
       )
-      if (!existingPageIds.charactersPageId) {
-        updateNotionWorkPage(work.id, { charactersPageId })
+      if (!(existingPageIds as any).charactersPageId) {
+        updateNotionWorkPage(work.id, { workPageId, charactersPageId })
       }
       
       // 각 캐릭터를 하위 페이지로 생성/업데이트
@@ -1006,7 +1010,7 @@ export async function syncToNotion(
           console.error(`캐릭터 "${character.name}" 페이지 동기화 실패:`, error)
         }
       }
-      updateNotionWorkPage(work.id, { characterPageIds })
+      updateNotionWorkPage(work.id, { workPageId, characterPageIds })
       console.log(`작품 "${work.title}"의 캐릭터 페이지 동기화 완료 (${characters.length}개)`)
     } catch (error) {
       console.error(`작품 "${work.title}"의 캐릭터 페이지 동기화 실패:`, error)
@@ -1018,12 +1022,12 @@ export async function syncToNotion(
       const settingsPageId = await updateOrCreatePage(
         client,
         workPageId,
-        existingPageIds.settingsPageId,
+        (existingPageIds as any).settingsPageId,
         '설정',
         []
       )
-      if (!existingPageIds.settingsPageId) {
-        updateNotionWorkPage(work.id, { settingsPageId })
+      if (!(existingPageIds as any).settingsPageId) {
+        updateNotionWorkPage(work.id, { workPageId, settingsPageId })
       }
       
       // 각 설정을 하위 페이지로 생성/업데이트
@@ -1054,7 +1058,7 @@ export async function syncToNotion(
           console.error(`설정 "${setting.name}" 페이지 동기화 실패:`, error)
         }
       }
-      updateNotionWorkPage(work.id, { settingPageIds })
+      updateNotionWorkPage(work.id, { workPageId, settingPageIds })
       console.log(`작품 "${work.title}"의 설정 페이지 동기화 완료 (${settings.length}개)`)
     } catch (error) {
       console.error(`작품 "${work.title}"의 설정 페이지 동기화 실패:`, error)
@@ -1145,6 +1149,7 @@ export async function syncToNotion(
       
       // 페이지 ID 매핑 저장
       updateNotionWorkPage(work.id, {
+        workPageId,
         chapterPageIds,
         episodePageIds,
       })
@@ -1236,16 +1241,13 @@ export async function syncToNotion(
     }
     
     // 태그 페이지 ID 매핑 저장
-    if (tagsPageData) {
-      tagsPageData.tagPageIds = tagPageIds
-      existingPageMap.__tags_page__ = tagsPageData
-      setNotionWorkPageMap(existingPageMap)
-    } else {
-      updateNotionWorkPage('__tags_page__', {
-        workPageId: tagsPageId,
-        tagPageIds,
-      })
+    const map = getNotionWorkPageMap()
+    if (!map.__tags_page__) {
+      map.__tags_page__ = { workPageId: tagsPageId, tagPageIds: {} } as any
     }
+    ;(map.__tags_page__ as any).workPageId = tagsPageId
+    ;(map.__tags_page__ as any).tagPageIds = tagPageIds
+    setNotionWorkPageMap(map)
     console.log(`태그 동기화 완료: ${tagSuccessCount}개 성공`)
   } else {
     console.log('동기화할 태그가 없습니다.')
