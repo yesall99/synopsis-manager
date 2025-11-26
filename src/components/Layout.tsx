@@ -125,7 +125,7 @@ export default function Layout() {
           ? 'right-0 translate-x-0' 
           : 'right-0 translate-x-full'
       } md:left-0 md:right-auto md:translate-x-0`}>
-        <div className="p-5 border-b border-gray-100 dark:border-gray-700 flex-shrink-0 flex items-center justify-between">
+        <div className="h-12 px-5 border-b border-gray-100 dark:border-gray-700 flex-shrink-0 flex items-center justify-between">
           <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">시놉시스 매니저</h1>
           <button
             onClick={() => setIsMobileMenuOpen(false)}
