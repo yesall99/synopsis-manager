@@ -1,5 +1,5 @@
 import { Client } from '@notionhq/client'
-import type { Work, Synopsis, Character, Setting, Episode, Chapter, Tag } from '@/types'
+import type { Work, Synopsis, Character, Setting, Episode, Chapter, Tag, TagCategory } from '@/types'
 
 // Cloudflare Pages Functions 프록시를 사용하는 노션 API 클라이언트
 // 개발/프로덕션 환경 모두 `/api/notion` 프록시를 통해 호출합니다.
@@ -112,6 +112,7 @@ interface NotionWorkPageMap {
   __tags_page__?: {
     workPageId: string
     tagPageIds?: Record<string, string> // tagId -> pageId
+    tagCategoryPageIds?: Record<string, string> // tagCategoryId -> pageId
   }
 }
 
@@ -729,6 +730,7 @@ export async function syncToNotion(
     episodes: Episode[]
     chapters: Chapter[]
     tags: Tag[]
+    tagCategories: TagCategory[]
   }
 ): Promise<void> {
   console.log('=== 노션 동기화 시작 ===')
@@ -740,6 +742,7 @@ export async function syncToNotion(
     episodes: data.episodes.length,
     chapters: data.chapters.length,
     tags: data.tags.length,
+    tagCategories: data.tagCategories.length,
   })
 
   // 데이터베이스는 더 이상 사용하지 않음 (일반 페이지로 작품 생성)
@@ -1272,9 +1275,243 @@ export async function syncToNotion(
     }
   }
 
-  // 7. Tags 동기화는 제거 (태그는 변경되지 않았을 때 동기화하지 않음)
-  // 태그 동기화는 사용자가 명시적으로 요청할 때만 실행하도록 변경
-  console.log('태그 동기화는 건너뜁니다. (태그는 변경되지 않았을 때 동기화하지 않음)')
+  // 7. Tag Categories 및 Tags 동기화
+  const tagsPageIdKey = '__tags_page__'
+  let tagsPageId = existingPageMap[tagsPageIdKey]?.workPageId
+  
+  if (!tagsPageId) {
+    // 태그 페이지가 없으면 생성
+    try {
+      const tagsPage = await client.pages.create({
+        parent: { page_id: rootPageId },
+        properties: {
+          title: {
+            title: [{ text: { content: '태그' } }],
+          },
+        },
+      })
+      tagsPageId = tagsPage.id
+      const map = getNotionWorkPageMap()
+      map.__tags_page__ = { workPageId: tagsPageId, tagCategoryPageIds: {}, tagPageIds: {} } as any
+      setNotionWorkPageMap(map)
+      console.log('태그 페이지 생성 완료')
+    } catch (error: any) {
+      console.error('태그 페이지 생성 실패:', error)
+      if (error?.message?.includes('archived')) {
+        console.error('부모 페이지가 아카이브되어 있어서 태그 페이지를 생성할 수 없습니다.')
+      }
+      return // 태그 페이지 생성 실패 시 태그 동기화 중단
+    }
+  } else {
+    // 기존 태그 페이지가 아카이브되어 있는지 확인
+    try {
+      const existingTagsPage = await client.pages.retrieve({ page_id: tagsPageId })
+      if ((existingTagsPage as any).archived) {
+        console.warn('태그 페이지가 아카이브되어 있습니다. 새로 생성합니다.')
+        const tagsPage = await client.pages.create({
+          parent: { page_id: rootPageId },
+          properties: {
+            title: {
+              title: [{ text: { content: '태그' } }],
+            },
+          },
+        })
+        tagsPageId = tagsPage.id
+        const map = getNotionWorkPageMap()
+        map.__tags_page__ = { workPageId: tagsPageId, tagCategoryPageIds: {}, tagPageIds: {} } as any
+        setNotionWorkPageMap(map)
+        console.log('태그 페이지 재생성 완료')
+      }
+    } catch (error) {
+      console.warn('태그 페이지 확인 실패:', error)
+    }
+  }
+  
+  // 7-1. 태그 카테고리 동기화
+  if (data.tagCategories.length > 0) {
+    console.log(`태그 카테고리 ${data.tagCategories.length}개 동기화 시작...`)
+    let tagCategorySuccessCount = 0
+    
+    // 태그 카테고리 페이지 ID 매핑 가져오기
+    const tagsPageData = existingPageMap.__tags_page__
+    const tagCategoryPageIds: Record<string, string> = (tagsPageData as any)?.tagCategoryPageIds || {}
+    
+    for (const category of data.tagCategories) {
+      try {
+        // 태그 카테고리를 태그 페이지의 하위 페이지로 생성/업데이트
+        const existingCategoryPageId = tagCategoryPageIds[category.id]
+        const categoryPageId = await updateOrCreatePage(
+          client,
+          tagsPageId,
+          existingCategoryPageId, // 기존 페이지 ID 사용
+          category.name || '이름 없음',
+          [
+            {
+              object: 'block',
+              type: 'paragraph',
+              paragraph: {
+                rich_text: [
+                  { type: 'text', text: { content: `순서: ${category.order}` } },
+                ],
+              },
+            },
+            {
+              object: 'block',
+              type: 'paragraph',
+              paragraph: {
+                rich_text: [
+                  { type: 'text', text: { content: `생성일: ${category.createdAt?.toISOString() || '없음'}` } },
+                ],
+              },
+            },
+            {
+              object: 'block',
+              type: 'paragraph',
+              paragraph: {
+                rich_text: [
+                  { type: 'text', text: { content: `수정일: ${category.updatedAt?.toISOString() || '없음'}` } },
+                ],
+              },
+            },
+          ]
+        )
+        // 새로 생성된 경우에만 ID 저장
+        if (!existingCategoryPageId || categoryPageId !== existingCategoryPageId) {
+          tagCategoryPageIds[category.id] = categoryPageId
+        }
+        tagCategorySuccessCount++
+        console.log(`태그 카테고리 "${category.name}" 동기화 완료`)
+      } catch (error) {
+        console.error(`태그 카테고리 ${category.id} (${category.name}) 동기화 실패:`, error)
+        if (error instanceof Error) {
+          console.error('에러 메시지:', error.message)
+        }
+      }
+    }
+    
+    // 태그 카테고리 페이지 ID 매핑 저장
+    const map = getNotionWorkPageMap()
+    if (!map.__tags_page__) {
+      map.__tags_page__ = { workPageId: tagsPageId, tagCategoryPageIds: {}, tagPageIds: {} } as any
+    }
+    ;(map.__tags_page__ as any).workPageId = tagsPageId
+    ;(map.__tags_page__ as any).tagCategoryPageIds = tagCategoryPageIds
+    setNotionWorkPageMap(map)
+    console.log(`태그 카테고리 동기화 완료: ${tagCategorySuccessCount}개 성공`)
+  } else {
+    console.log('동기화할 태그 카테고리가 없습니다.')
+  }
+  
+  // 7-2. 태그 동기화 (각 태그를 해당 카테고리 페이지의 하위 페이지로 생성)
+  if (data.tags.length > 0) {
+    console.log(`태그 ${data.tags.length}개 동기화 시작...`)
+    let tagSuccessCount = 0
+    
+    // 태그 페이지 ID 매핑 가져오기
+    const tagsPageData = existingPageMap.__tags_page__
+    const tagCategoryPageIds: Record<string, string> = (tagsPageData as any)?.tagCategoryPageIds || {}
+    const tagPageIds: Record<string, string> = (tagsPageData as any)?.tagPageIds || {}
+    
+    // 카테고리별로 태그 그룹화
+    const tagsByCategory = new Map<string, Tag[]>()
+    for (const tag of data.tags) {
+      if (!tagsByCategory.has(tag.categoryId)) {
+        tagsByCategory.set(tag.categoryId, [])
+      }
+      tagsByCategory.get(tag.categoryId)!.push(tag)
+    }
+    
+    for (const [categoryId, tags] of tagsByCategory) {
+      const categoryPageId = tagCategoryPageIds[categoryId]
+      if (!categoryPageId) {
+        console.warn(`카테고리 ${categoryId}의 페이지 ID를 찾을 수 없습니다. 태그 동기화를 건너뜁니다.`)
+        continue
+      }
+      
+      for (const tag of tags) {
+        try {
+          // 태그를 해당 카테고리 페이지의 하위 페이지로 생성/업데이트
+          const existingTagPageId = tagPageIds[tag.id]
+          const tagPageId = await updateOrCreatePage(
+            client,
+            categoryPageId,
+            existingTagPageId, // 기존 페이지 ID 사용
+            tag.name || '이름 없음',
+            [
+              {
+                object: 'block',
+                type: 'paragraph',
+                paragraph: {
+                  rich_text: [
+                    { type: 'text', text: { content: `카테고리 ID: ${tag.categoryId}` } },
+                  ],
+                },
+              },
+              {
+                object: 'block',
+                type: 'paragraph',
+                paragraph: {
+                  rich_text: [
+                    { type: 'text', text: { content: `순서: ${tag.order}` } },
+                  ],
+                },
+              },
+              {
+                object: 'block',
+                type: 'paragraph',
+                paragraph: {
+                  rich_text: [
+                    { type: 'text', text: { content: `새 태그: ${tag.isNew ? '예' : '아니오'}` } },
+                  ],
+                },
+              },
+              {
+                object: 'block',
+                type: 'paragraph',
+                paragraph: {
+                  rich_text: [
+                    { type: 'text', text: { content: `생성일: ${tag.createdAt?.toISOString() || '없음'}` } },
+                  ],
+                },
+              },
+              {
+                object: 'block',
+                type: 'paragraph',
+                paragraph: {
+                  rich_text: [
+                    { type: 'text', text: { content: `수정일: ${tag.updatedAt?.toISOString() || '없음'}` } },
+                  ],
+                },
+              },
+            ]
+          )
+          // 새로 생성된 경우에만 ID 저장
+          if (!existingTagPageId || tagPageId !== existingTagPageId) {
+            tagPageIds[tag.id] = tagPageId
+          }
+          tagSuccessCount++
+          console.log(`태그 "${tag.name}" 동기화 완료 (카테고리: ${categoryId})`)
+        } catch (error) {
+          console.error(`태그 ${tag.id} (${tag.name}) 동기화 실패:`, error)
+          if (error instanceof Error) {
+            console.error('에러 메시지:', error.message)
+          }
+        }
+      }
+    }
+    
+    // 태그 페이지 ID 매핑 저장
+    const map = getNotionWorkPageMap()
+    if (!map.__tags_page__) {
+      map.__tags_page__ = { workPageId: tagsPageId, tagCategoryPageIds: {}, tagPageIds: {} } as any
+    }
+    ;(map.__tags_page__ as any).workPageId = tagsPageId
+    ;(map.__tags_page__ as any).tagPageIds = tagPageIds
+    setNotionWorkPageMap(map)
+    console.log(`태그 동기화 완료: ${tagSuccessCount}개 성공`)
+  } else {
+    console.log('동기화할 태그가 없습니다.')
+  }
 
   console.log('노션 동기화 완료!')
   console.log('작품 페이지를 열면 연결된 시놉시스, 캐릭터, 설정, 장, 회차가 Relation 속성으로 표시됩니다.')

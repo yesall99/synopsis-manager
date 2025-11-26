@@ -9,6 +9,7 @@ import { settingService } from '@/services/storage/storageService'
 import { episodeService } from '@/services/storage/storageService'
 import { chapterService } from '@/services/storage/storageService'
 import { tagService } from '@/services/storage/storageService'
+import { tagCategoryService } from '@/services/storage/tagService'
 import { getNotionClient, initializeNotionDatabases, syncToNotion, syncFromNotion, getAccessiblePages, verifyRootPage } from '@/services/sync/notion'
 
 interface SettingsModalProps {
@@ -531,6 +532,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                   const episodes = await episodeService.getAll()
                                   const chapters = await chapterService.getAll()
                                   const tags = await tagService.getAll()
+                                  const tagCategories = await tagCategoryService.getAll()
                                   
                                   console.log('로드된 데이터:', {
                                     works: works.length,
@@ -540,6 +542,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                     episodes: episodes.length,
                                     chapters: chapters.length,
                                     tags: tags.length,
+                                    tagCategories: tagCategories.length,
                                   })
                                   
                                   console.log('syncToNotion 호출 시작...')
@@ -552,6 +555,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                     chapters,
                                     // @ts-ignore - tags type mismatch
                                     tags: tags as any,
+                                    tagCategories,
                                   })
                                   console.log('syncToNotion 완료')
                                   alert('노션으로 데이터 동기화가 완료되었습니다.')

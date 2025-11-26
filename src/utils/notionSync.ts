@@ -6,6 +6,7 @@ import { settingService } from '@/services/storage/storageService'
 import { episodeService } from '@/services/storage/storageService'
 import { chapterService } from '@/services/storage/storageService'
 import { tagService } from '@/services/storage/storageService'
+import { tagCategoryService } from '@/services/storage/tagService'
 import { useToastStore } from '@/stores/toastStore'
 
 /**
@@ -39,6 +40,7 @@ export async function syncToNotionInBackground(): Promise<void> {
     const chapters = await chapterService.getAll()
     // @ts-ignore - tagService.getAll()의 반환 타입이 Tag[]와 다를 수 있음
     const tags = await tagService.getAll()
+    const tagCategories = await tagCategoryService.getAll()
     
     // 동기화 실행
     await syncToNotion(client, {
@@ -49,6 +51,7 @@ export async function syncToNotionInBackground(): Promise<void> {
       episodes,
       chapters,
       tags: tags as any, // 타입 변환
+      tagCategories,
     })
     
     // 성공 토스트
