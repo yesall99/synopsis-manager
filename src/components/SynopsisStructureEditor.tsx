@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Plus, Trash2, GripVertical, Edit2, Save, X } from 'lucide-react'
 import {
   DndContext,
@@ -39,12 +39,10 @@ function SortableSectionItem({
   label,
   index,
   isEditing,
-  edit,
   onStartEdit,
   onCancelEdit,
   onSaveEdit,
   onRemove,
-  onUpdateEditData,
   activeId,
 }: {
   section: SynopsisSection
@@ -52,12 +50,10 @@ function SortableSectionItem({
   label: string
   index: number
   isEditing: boolean
-  edit: { title: string; content: string }
   onStartEdit: (section: SynopsisSection) => void
   onCancelEdit: (id: string) => void
-  onSaveEdit: (type: keyof SynopsisStructure, id: string) => void
+  onSaveEdit: (type: keyof SynopsisStructure, id: string, data: { title: string; content: string }) => void
   onRemove: (type: keyof SynopsisStructure, id: string) => void
-  onUpdateEditData: (id: string, field: 'title' | 'content', value: string) => void
   activeId: string | null
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging, over } = useSortable({
@@ -65,6 +61,19 @@ function SortableSectionItem({
   })
   const titleInputRef = useRef<HTMLInputElement>(null)
   const wasEditingRef = useRef(false)
+  const [draft, setDraft] = useState({
+    title: section.title || '',
+    content: section.content || '',
+  })
+
+  useEffect(() => {
+    if (isEditing) {
+      setDraft({
+        title: section.title || '',
+        content: section.content || '',
+      })
+    }
+  }, [isEditing, section.title, section.content])
 
   // 드래그 중일 때만 transform 적용 (드래그 중이 아닌 항목은 transform 비활성화)
   const shouldApplyTransform = isDragging || (activeId && activeId === section.id)
@@ -78,18 +87,30 @@ function SortableSectionItem({
   // 같은 섹션 내에서만 드롭 인디케이터 표시
   const showDropIndicator = over && over.id === section.id && !isDragging
 
-  // 편집 모드일 때 포커스 유지
+  // 편집 모드 진입 시 한 번만 포커스 (모바일 깜빡임 방지)
   useEffect(() => {
-    if (isEditing && titleInputRef.current) {
-      // 리렌더링 후에도 포커스 유지
-      const timer = setTimeout(() => {
-        if (titleInputRef.current && document.activeElement !== titleInputRef.current) {
-          titleInputRef.current.focus()
+    if (!isEditing) {
+      wasEditingRef.current = false
+      return
+    }
+
+    const input = titleInputRef.current
+    if (!input) {
+      return
+    }
+
+    if (!wasEditingRef.current || document.activeElement !== input) {
+      const timer = window.setTimeout(() => {
+        if (document.activeElement !== input) {
+          input.focus()
         }
       }, 0)
-      return () => clearTimeout(timer)
+      wasEditingRef.current = true
+      return () => window.clearTimeout(timer)
     }
-  }, [isEditing, edit.title])
+
+    wasEditingRef.current = true
+  }, [isEditing])
 
   return (
     <>
@@ -112,10 +133,10 @@ function SortableSectionItem({
                   key={`title-input-${section.id}`}
                   ref={titleInputRef}
                   type="text"
-                  value={edit.title}
+                  value={draft.title}
                   onChange={(e) => {
                     const newValue = e.target.value
-                    onUpdateEditData(section.id, 'title', newValue)
+                    setDraft((prev) => ({ ...prev, title: newValue }))
                   }}
                   onBlur={(e) => {
                     // 포커스가 다른 input이나 편집 가능한 요소로 이동하는 경우에만 blur 처리
@@ -124,12 +145,12 @@ function SortableSectionItem({
                       return
                     }
                   }}
-                  className="flex-1 px-3 py-2 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent font-medium text-gray-900 dark:text-gray-100"
+                  className="flex-1 px-3 py-2 text-base border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent font-medium text-gray-900 dark:text-gray-100"
                 />
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => onSaveEdit(sectionType, section.id)}
+                  onClick={() => onSaveEdit(sectionType, section.id, draft)}
                   className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
                   title="저장"
                 >
@@ -153,9 +174,9 @@ function SortableSectionItem({
             </div>
             <div className="ml-8">
               <SynopsisEditor
-                content={edit.content}
-                onChange={(content) => onUpdateEditData(section.id, 'content', content)}
-                placeholder={`${edit.title} 내용을 작성하세요...`}
+                content={draft.content}
+                onChange={(content) => setDraft((prev) => ({ ...prev, content }))}
+                placeholder={`${draft.title || '항목'} 내용을 작성하세요...`}
               />
             </div>
           </>
@@ -239,7 +260,6 @@ export default function SynopsisStructureEditor({
   onChange,
 }: SynopsisStructureEditorProps) {
   const [editingIds, setEditingIds] = useState<Set<string>>(new Set())
-  const [editData, setEditData] = useState<Record<string, { title: string; content: string }>>({})
   const [activeId, setActiveId] = useState<string | null>(null)
 
   const sensors = useSensors(
@@ -391,10 +411,6 @@ export default function SynopsisStructureEditor({
       order: sections.length,
     }
     setEditingIds(new Set([...editingIds, newSection.id]))
-    setEditData({
-      ...editData,
-      [newSection.id]: { title: newSection.title, content: newSection.content },
-    })
     onChange({
       ...structure,
       [type]: [...sections, newSection],
@@ -412,27 +428,17 @@ export default function SynopsisStructureEditor({
 
   const startEdit = (section: SynopsisSection) => {
     setEditingIds(new Set([...editingIds, section.id]))
-    setEditData({
-      ...editData,
-      [section.id]: { title: section.title, content: section.content },
-    })
   }
 
   const cancelEdit = (id: string) => {
     const newEditingIds = new Set(editingIds)
     newEditingIds.delete(id)
     setEditingIds(newEditingIds)
-    const newEditData = { ...editData }
-    delete newEditData[id]
-    setEditData(newEditData)
   }
 
-  const saveEdit = (type: keyof SynopsisStructure, id: string) => {
-    const edit = editData[id]
-    if (!edit) return
-
+  const saveEdit = (type: keyof SynopsisStructure, id: string, data: { title: string; content: string }) => {
     const sections = structure[type].map((s) =>
-      s.id === id ? { ...s, title: edit.title, content: edit.content } : s
+      s.id === id ? { ...s, title: data.title, content: data.content } : s
     )
     onChange({
       ...structure,
@@ -442,45 +448,28 @@ export default function SynopsisStructureEditor({
     cancelEdit(id)
   }
 
-  const updateEditData = useCallback((id: string, field: 'title' | 'content', value: string) => {
-    setEditData((prev) => {
-      const current = prev[id] || { title: '', content: '' }
-      return {
-        ...prev,
-        [id]: {
-          ...current,
-          [field]: value,
-        },
-      }
-    })
-  }, [])
-
   // 섹션 컴포넌트
   const SectionContainer = ({
     type,
     label,
     sections,
     editingIds,
-    editData,
     onAddSection,
     onStartEdit,
     onCancelEdit,
     onSaveEdit,
     onRemoveSection,
-    onUpdateEditData,
     activeId,
   }: {
     type: keyof SynopsisStructure
     label: string
     sections: SynopsisSection[]
     editingIds: Set<string>
-    editData: Record<string, { title: string; content: string }>
     onAddSection: (type: keyof SynopsisStructure) => void
     onStartEdit: (section: SynopsisSection) => void
     onCancelEdit: (id: string) => void
-    onSaveEdit: (type: keyof SynopsisStructure, id: string) => void
+    onSaveEdit: (type: keyof SynopsisStructure, id: string, data: { title: string; content: string }) => void
     onRemoveSection: (type: keyof SynopsisStructure, id: string) => void
-    onUpdateEditData: (id: string, field: 'title' | 'content', value: string) => void
     activeId: string | null
   }) => {
     const { setNodeRef, isOver } = useDroppable({
@@ -517,7 +506,6 @@ export default function SynopsisStructureEditor({
           <div className="space-y-4">
             {sections.map((section, index) => {
               const isEditing = editingIds.has(section.id)
-              const edit = editData[section.id] || { title: section.title, content: section.content }
 
               return (
                 <SortableSectionItem
@@ -527,12 +515,10 @@ export default function SynopsisStructureEditor({
                   label={label}
                   index={index}
                   isEditing={isEditing}
-                  edit={edit}
                   onStartEdit={onStartEdit}
                   onCancelEdit={onCancelEdit}
                   onSaveEdit={onSaveEdit}
                   onRemove={onRemoveSection}
-                  onUpdateEditData={onUpdateEditData}
                   activeId={activeId}
                 />
               )
@@ -566,13 +552,11 @@ export default function SynopsisStructureEditor({
             label="기"
             sections={structure.gi}
             editingIds={editingIds}
-            editData={editData}
             onAddSection={addSection}
             onStartEdit={startEdit}
             onCancelEdit={cancelEdit}
             onSaveEdit={saveEdit}
             onRemoveSection={removeSection}
-            onUpdateEditData={updateEditData}
             activeId={activeId}
           />
           <SectionContainer
@@ -580,13 +564,11 @@ export default function SynopsisStructureEditor({
             label="승"
             sections={structure.seung}
             editingIds={editingIds}
-            editData={editData}
             onAddSection={addSection}
             onStartEdit={startEdit}
             onCancelEdit={cancelEdit}
             onSaveEdit={saveEdit}
             onRemoveSection={removeSection}
-            onUpdateEditData={updateEditData}
             activeId={activeId}
           />
           <SectionContainer
@@ -594,13 +576,11 @@ export default function SynopsisStructureEditor({
             label="전"
             sections={structure.jeon}
             editingIds={editingIds}
-            editData={editData}
             onAddSection={addSection}
             onStartEdit={startEdit}
             onCancelEdit={cancelEdit}
             onSaveEdit={saveEdit}
             onRemoveSection={removeSection}
-            onUpdateEditData={updateEditData}
             activeId={activeId}
           />
           <SectionContainer
@@ -608,13 +588,11 @@ export default function SynopsisStructureEditor({
             label="결"
             sections={structure.gyeol}
             editingIds={editingIds}
-            editData={editData}
             onAddSection={addSection}
             onStartEdit={startEdit}
             onCancelEdit={cancelEdit}
             onSaveEdit={saveEdit}
             onRemoveSection={removeSection}
-            onUpdateEditData={updateEditData}
             activeId={activeId}
           />
         </div>

@@ -233,7 +233,7 @@ export default function WorkDetail() {
                 <p className="text-sm text-gray-600 dark:text-gray-400 break-words">{currentWork.description}</p>
               )}
             </div>
-            <div className="flex gap-1.5 flex-shrink-0">
+            <div className="flex flex-wrap sm:flex-nowrap gap-1.5 justify-end flex-shrink-0 w-full sm:w-auto">
               <button
                 onClick={() => setIsExportDialogOpen(true)}
                 className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
@@ -531,8 +531,8 @@ export default function WorkDetail() {
           {activeTab === 'episodes' && (
             <div>
               {/* 서브 탭 */}
-              <div className="border-b border-gray-100 dark:border-gray-700 mb-6">
-                <nav className="flex gap-6">
+              <div className="border-b border-gray-100 dark:border-gray-700 mb-6 overflow-x-auto">
+                <nav className="flex gap-4 sm:gap-6 min-w-max sm:min-w-0">
                   {[
                     { id: 'list' as const, label: '회차', icon: FileText },
                     { id: 'episodeStats' as const, label: '회차 통계', icon: BarChart3 },
@@ -603,7 +603,7 @@ export default function WorkDetail() {
                         const chapterEpisodes = workEpisodes.filter((e) => e.chapterId === chapter.id)
                         return (
                           <div key={chapter.id} className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
-                            <div className="flex items-center justify-between mb-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
                               <h3 className="text-base font-medium text-gray-900 dark:text-gray-100">
                                 {chapter.title}
                                 {chapter.structureType && (
@@ -1004,7 +1004,7 @@ export default function WorkDetail() {
                 <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2">
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">연재 통계</h2>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                       <label className="text-sm text-gray-600 dark:text-gray-400">회차 표시 간격:</label>
                       <select
                         value={episodeDisplayInterval}
