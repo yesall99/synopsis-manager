@@ -107,19 +107,19 @@ export default function TagManagement() {
             {!isNewCategory ? (
               <button
                 onClick={() => setIsNewCategory(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-900 dark:bg-gray-700 text-white hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-900 dark:bg-gray-700 text-white hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors w-full sm:w-auto justify-center sm:justify-start"
               >
                 <Plus className="w-4 h-4" />
                 새 카테고리 추가
               </button>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                 <input
                   type="text"
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
                   placeholder="카테고리 이름 (예: 장르, 관계)"
-                  className="px-3 py-1.5 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                  className="flex-1 px-3 py-1.5 text-base border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                   autoFocus
                   onKeyPress={(e) => {
                     if (e.key === 'Enter') {
@@ -127,22 +127,24 @@ export default function TagManagement() {
                     }
                   }}
                 />
-                <button
-                  onClick={handleCreateCategory}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-900 dark:bg-gray-700 text-white hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors"
-                >
-                  <Save className="w-4 h-4" />
-                  저장
-                </button>
-                <button
-                  onClick={() => {
-                    setIsNewCategory(false)
-                    setNewCategoryName('')
-                  }}
-                  className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={handleCreateCategory}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gray-900 dark:bg-gray-700 text-white hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span className="hidden sm:inline">저장</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsNewCategory(false)
+                      setNewCategoryName('')
+                    }}
+                    className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -155,7 +157,7 @@ export default function TagManagement() {
 
               return (
                 <div key={category.id} className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4">
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
                     {isEditing ? (
                       <input
                         type="text"
@@ -169,13 +171,13 @@ export default function TagManagement() {
                         onBlur={(e) => {
                           handleUpdateCategory(category.id, e.target.value)
                         }}
-                        className="flex-1 px-3 py-1 text-sm border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100"
+                        className="flex-1 px-3 py-1 text-base border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100"
                         autoFocus
                       />
                     ) : (
-                      <h3 className="text-base font-medium text-gray-900 dark:text-gray-100">{category.name}</h3>
+                      <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 flex-1">{category.name}</h3>
                     )}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       {!isEditing && (
                         <>
                           <button
@@ -197,7 +199,7 @@ export default function TagManagement() {
 
                   {/* 태그 목록 */}
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                       <span className="text-sm text-gray-600 dark:text-gray-400">태그</span>
                       {!isNewTag || newTagCategoryId !== category.id ? (
                         <button
@@ -205,19 +207,19 @@ export default function TagManagement() {
                             setIsNewTag(true)
                             setNewTagCategoryId(category.id)
                           }}
-                          className="flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                          className="flex items-center gap-1 px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors self-start sm:self-auto"
                         >
                           <Plus className="w-3 h-3" />
                           태그 추가
                         </button>
                       ) : (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-1 sm:flex-initial">
                           <input
                             type="text"
                             value={newTagName}
                             onChange={(e) => setNewTagName(e.target.value)}
                             placeholder="태그 이름"
-                            className="px-2 py-0.5 text-xs border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                            className="flex-1 min-w-0 px-2 py-0.5 text-base border-b border-gray-200 dark:border-gray-700 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                             autoFocus
                             onKeyPress={(e) => {
                               if (e.key === 'Enter') {
@@ -227,7 +229,7 @@ export default function TagManagement() {
                           />
                           <button
                             onClick={handleCreateTag}
-                            className="p-1 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                            className="p-1 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors flex-shrink-0"
                           >
                             <Save className="w-3 h-3" />
                           </button>
@@ -237,7 +239,7 @@ export default function TagManagement() {
                               setNewTagName('')
                               setNewTagCategoryId('')
                             }}
-                            className="p-1 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                            className="p-1 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors flex-shrink-0"
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -265,7 +267,7 @@ export default function TagManagement() {
                                 onBlur={(e) => {
                                   handleUpdateTag(tag.id, e.target.value)
                                 }}
-                                className="w-24 px-2 py-0.5 text-xs border-b border-gray-200 dark:border-gray-600 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100"
+                                className="min-w-[80px] px-2 py-0.5 text-base border-b border-gray-200 dark:border-gray-600 focus:outline-none focus:border-gray-900 dark:focus:border-gray-300 transition-colors bg-transparent text-gray-900 dark:text-gray-100"
                                 autoFocus
                               />
                             ) : (
