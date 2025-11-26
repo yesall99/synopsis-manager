@@ -241,12 +241,20 @@ async function ensureDatabaseProperties(
           properties: missingProps,
         })
         console.log(`데이터베이스 ${databaseId}에 속성 추가 완료:`, Object.keys(missingProps))
-      } catch (error) {
+      } catch (error: any) {
+        // 아카이브된 부모 페이지 오류인 경우 재시도하지 않음
+        if (error?.message?.includes('archived')) {
+          console.warn(`데이터베이스 ${databaseId}의 부모 페이지가 아카이브되어 있습니다.`)
+          throw new Error('ARCHIVED_PARENT')
+        }
         console.warn(`데이터베이스 ${databaseId}에 속성 추가 실패:`, error)
         throw error
       }
     }
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message === 'ARCHIVED_PARENT') {
+      throw error
+    }
     console.error(`데이터베이스 ${databaseId} 확인 실패:`, error)
     throw error
   }
@@ -279,8 +287,14 @@ export async function initializeNotionDatabases(client: Client, rootPageId: stri
         
         console.log('기존 데이터베이스 속성 확인 완료')
         return dbIds
-      } catch (error) {
-        console.warn('기존 데이터베이스 속성 확인 실패, 새로 생성합니다:', error)
+      } catch (error: any) {
+        // 아카이브된 부모 페이지 오류인 경우 새로 생성
+        if (error?.message === 'ARCHIVED_PARENT' || error?.message?.includes('archived')) {
+          console.warn('기존 데이터베이스의 부모 페이지가 아카이브되어 있습니다. 새로 생성합니다.')
+          setNotionDatabaseIds({})
+        } else {
+          console.warn('기존 데이터베이스 속성 확인 실패, 새로 생성합니다:', error)
+        }
         // 속성 확인 실패 시 새로 생성
       }
     } else {
