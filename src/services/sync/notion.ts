@@ -155,52 +155,85 @@ async function updateOrCreatePage(
   if (pageId) {
     // 기존 페이지 업데이트
     try {
-      // 제목 업데이트
-      await client.pages.update({
-        page_id: pageId,
-        properties: {
-          title: {
-            title: [{ text: { content: title } }],
+      // 페이지가 아카이브되어 있는지 확인
+      const existingPage = await client.pages.retrieve({ page_id: pageId })
+      if ((existingPage as any).archived) {
+        console.warn(`페이지가 아카이브되어 있습니다. 새로 생성합니다: ${pageId}`)
+        // 아카이브된 페이지는 새로 생성
+      } else {
+        // 제목 업데이트
+        await client.pages.update({
+          page_id: pageId,
+          properties: {
+            title: {
+              title: [{ text: { content: title } }],
+            },
           },
-        },
-      })
-      
-      // 기존 블록 삭제
-      const existingBlocks = await client.blocks.children.list({ block_id: pageId })
-      for (const block of existingBlocks.results) {
-        try {
-          await client.blocks.delete({ block_id: block.id })
-        } catch (e) {
-          // 삭제 실패는 무시
-        }
-      }
-      
-      // 새 블록 추가
-      if (children.length > 0) {
-        await client.blocks.children.append({
-          block_id: pageId,
-          children,
         })
+        
+        // 기존 블록 삭제 (아카이브되지 않은 것만)
+        try {
+          const existingBlocks = await client.blocks.children.list({ block_id: pageId })
+          for (const block of existingBlocks.results) {
+            try {
+              // 블록이 아카이브되어 있지 않은지 확인
+              if (!(block as any).archived) {
+                await client.blocks.delete({ block_id: block.id })
+              }
+            } catch (e) {
+              // 삭제 실패는 무시 (아카이브된 블록 등)
+            }
+          }
+        } catch (blockError) {
+          // 블록 목록 가져오기 실패는 무시하고 계속 진행
+          console.warn('기존 블록 목록 가져오기 실패:', blockError)
+        }
+        
+        // 새 블록 추가
+        if (children.length > 0) {
+          try {
+            await client.blocks.children.append({
+              block_id: pageId,
+              children,
+            })
+          } catch (appendError) {
+            // 블록 추가 실패는 무시하고 계속 진행
+            console.warn('블록 추가 실패:', appendError)
+          }
+        }
+        
+        return pageId
       }
-      
-      return pageId
-    } catch (error) {
-      console.warn(`페이지 업데이트 실패, 새로 생성합니다:`, error)
+    } catch (error: any) {
+      // 아카이브 오류인 경우 새로 생성
+      if (error?.message?.includes('archived')) {
+        console.warn(`아카이브된 페이지입니다. 새로 생성합니다: ${pageId}`)
+      } else {
+        console.warn(`페이지 업데이트 실패, 새로 생성합니다:`, error)
+      }
       // 업데이트 실패 시 새로 생성
     }
   }
   
   // 새 페이지 생성
-  const newPage = await client.pages.create({
-    parent: { page_id: parentPageId },
-    properties: {
-      title: {
-        title: [{ text: { content: title } }],
+  try {
+    const newPage = await client.pages.create({
+      parent: { page_id: parentPageId },
+      properties: {
+        title: {
+          title: [{ text: { content: title } }],
+        },
       },
-    },
-    children,
-  })
-  return newPage.id
+      children,
+    })
+    return newPage.id
+  } catch (createError: any) {
+    // 부모 페이지가 아카이브되어 있는 경우
+    if (createError?.message?.includes('archived')) {
+      throw new Error(`부모 페이지가 아카이브되어 있어서 페이지를 생성할 수 없습니다.`)
+    }
+    throw createError
+  }
 }
 
 // 노션 데이터베이스 생성
@@ -1173,13 +1206,42 @@ export async function syncToNotion(
         },
       })
       tagsPageId = tagsPage.id
-      updateNotionWorkPage(tagsPageIdKey, {
-        workPageId: tagsPageId,
-      })
+      const map = getNotionWorkPageMap()
+      map.__tags_page__ = { workPageId: tagsPageId, tagPageIds: {} } as any
+      setNotionWorkPageMap(map)
       console.log('태그 페이지 생성 완료')
-    } catch (error) {
+    } catch (error: any) {
       console.error('태그 페이지 생성 실패:', error)
+      // 부모 페이지가 아카이브되어 있는 경우 등
+      if (error?.message?.includes('archived')) {
+        console.error('부모 페이지가 아카이브되어 있어서 태그 페이지를 생성할 수 없습니다.')
+      }
       return // 태그 페이지 생성 실패 시 태그 동기화 중단
+    }
+  } else {
+    // 기존 태그 페이지가 아카이브되어 있는지 확인
+    try {
+      const existingTagsPage = await client.pages.retrieve({ page_id: tagsPageId })
+      if ((existingTagsPage as any).archived) {
+        console.warn('태그 페이지가 아카이브되어 있습니다. 새로 생성합니다.')
+        // 아카이브된 페이지는 새로 생성
+        const tagsPage = await client.pages.create({
+          parent: { page_id: rootPageId },
+          properties: {
+            title: {
+              title: [{ text: { content: '태그' } }],
+            },
+          },
+        })
+        tagsPageId = tagsPage.id
+        const map = getNotionWorkPageMap()
+        map.__tags_page__ = { workPageId: tagsPageId, tagPageIds: {} } as any
+        setNotionWorkPageMap(map)
+        console.log('태그 페이지 재생성 완료')
+      }
+    } catch (error) {
+      console.warn('태그 페이지 확인 실패:', error)
+      // 확인 실패해도 계속 진행 (아마도 페이지가 없거나 접근 불가)
     }
   }
   
