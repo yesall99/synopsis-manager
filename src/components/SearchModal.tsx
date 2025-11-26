@@ -126,9 +126,6 @@ export default function SearchModal({
                           }`}
                         >
                           {tag.name}
-                          {tag.isNew && (
-                            <span className="text-xs bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-1 rounded">(N)</span>
-                          )}
                         </button>
                       )
                     })}

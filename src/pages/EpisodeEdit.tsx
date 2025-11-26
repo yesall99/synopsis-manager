@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Save, ArrowLeft, Trash2, Loader2, Edit2 } from 'lucide-react'
 import { useEpisodeStore } from '@/stores/episodeStore'
@@ -113,6 +113,16 @@ export default function EpisodeEdit() {
     return text.length
   }
 
+  // 실시간 글자수 계산 (공백 포함/미포함)
+  const wordCounts = useMemo(() => {
+    const tempDiv = document.createElement('div')
+    tempDiv.innerHTML = content
+    const text = tempDiv.textContent || tempDiv.innerText || ''
+    const withSpaces = text.length
+    const withoutSpaces = text.replace(/\s/g, '').length
+    return { withSpaces, withoutSpaces }
+  }, [content])
+
   // 다음 회차가 있는지 확인 (다음 회차가 있으면 선작수/조회수 입력 불가)
   const hasNextEpisode = episodes.some(
     (e) => e.workId === workId && e.episodeNumber > episodeNumber
@@ -122,7 +132,8 @@ export default function EpisodeEdit() {
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      const wordCount = calculateWordCount(content)
+      // 공백 포함 글자수로 저장 (기존과 동일)
+      const wordCount = wordCounts.withSpaces
       const publishedDate = publishedAt ? new Date(publishedAt) : undefined
 
       if (isNew) {
@@ -218,7 +229,7 @@ export default function EpisodeEdit() {
         <div className="mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-gray-100 break-words">
-              {isNew ? '새 회차' : (isNew || isEditing) ? '회차 편집' : `제 ${episodeNumber}화: ${title || '(제목 없음)'}`}
+              {isNew ? '새 회차' : (isNew || isEditing) ? '회차 편집' : title ? `제 ${episodeNumber}화: ${title}` : `제 ${episodeNumber}화`}
             </h1>
             {!isNew && !(isNew || isEditing) && (
               <div className="flex gap-2">
@@ -331,7 +342,13 @@ export default function EpisodeEdit() {
 
             {/* Content */}
             <div>
-              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-3">내용</label>
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-xs text-gray-500 dark:text-gray-400">내용</label>
+                <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                  <span>공포: {wordCounts.withSpaces.toLocaleString()}자</span>
+                  <span>공미포: {wordCounts.withoutSpaces.toLocaleString()}자</span>
+                </div>
+              </div>
               <SynopsisEditor content={content} onChange={setContent} placeholder="회차 내용을 작성하세요..." />
             </div>
 
@@ -384,10 +401,12 @@ export default function EpisodeEdit() {
             })()}
 
             {/* Title */}
-            <div>
-              <label className="block text-xs text-gray-500 dark:text-gray-400 mb-3">회차 제목</label>
-              <p className="text-base text-gray-900 dark:text-gray-100">{title || '(제목 없음)'}</p>
-            </div>
+            {title && (
+              <div>
+                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-3">회차 제목</label>
+                <p className="text-base text-gray-900 dark:text-gray-100">{title}</p>
+              </div>
+            )}
 
             {/* Published Date */}
             {publishedAt && (
@@ -418,12 +437,22 @@ export default function EpisodeEdit() {
             )}
 
             {/* Word Count */}
-            {currentEpisode?.wordCount && (
-              <div>
-                <label className="block text-xs text-gray-500 dark:text-gray-400 mb-3">글자 수</label>
-                <p className="text-base text-gray-900 dark:text-gray-100">{currentEpisode.wordCount.toLocaleString()}자</p>
-              </div>
-            )}
+            {content && (() => {
+              const tempDiv = document.createElement('div')
+              tempDiv.innerHTML = content
+              const text = tempDiv.textContent || tempDiv.innerText || ''
+              const withSpaces = text.length
+              const withoutSpaces = text.replace(/\s/g, '').length
+              return (
+                <div>
+                  <label className="block text-xs text-gray-500 dark:text-gray-400 mb-3">글자 수</label>
+                  <div className="flex items-center gap-4">
+                    <p className="text-base text-gray-900 dark:text-gray-100">공포: {withSpaces.toLocaleString()}자</p>
+                    <p className="text-base text-gray-900 dark:text-gray-100">공미포: {withoutSpaces.toLocaleString()}자</p>
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* Content */}
             <div>
