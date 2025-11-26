@@ -93,6 +93,40 @@ export function setNotionDatabaseIds(ids: NotionDatabaseIds): void {
   localStorage.setItem(NOTION_DB_IDS_KEY, JSON.stringify(ids))
 }
 
+// 작품 ID -> 노션 페이지 ID 매핑 저장/불러오기
+const NOTION_WORK_PAGE_MAP_KEY = 'notionWorkPageMap'
+
+interface NotionWorkPageMap {
+  [workId: string]: {
+    workPageId: string
+    synopsisPageId?: string
+    charactersPageId?: string
+    settingsPageId?: string
+    serialPageId?: string
+  }
+}
+
+export function getNotionWorkPageMap(): NotionWorkPageMap {
+  const saved = localStorage.getItem(NOTION_WORK_PAGE_MAP_KEY)
+  return saved ? JSON.parse(saved) : {}
+}
+
+export function setNotionWorkPageMap(map: NotionWorkPageMap): void {
+  localStorage.setItem(NOTION_WORK_PAGE_MAP_KEY, JSON.stringify(map))
+}
+
+export function updateNotionWorkPage(workId: string, pageIds: {
+  workPageId: string
+  synopsisPageId?: string
+  charactersPageId?: string
+  settingsPageId?: string
+  serialPageId?: string
+}): void {
+  const map = getNotionWorkPageMap()
+  map[workId] = pageIds
+  setNotionWorkPageMap(map)
+}
+
 // 노션 데이터베이스 생성
 export async function createNotionDatabase(
   client: Client,
@@ -575,22 +609,7 @@ export async function syncToNotion(
     tags: data.tags.length,
   })
 
-  let dbIds = getNotionDatabaseIds()
-  console.log('현재 저장된 데이터베이스 ID:', dbIds)
-
-  // 데이터베이스가 없으면 초기화
-  if (!dbIds.works) {
-    console.log('데이터베이스가 없어서 초기화 시작...')
-    const rootPageId = getRootPageId()
-    if (!rootPageId) {
-      throw new Error('Root page ID is required. Please connect to Notion first.')
-    }
-    await initializeNotionDatabases(client, rootPageId)
-    dbIds = getNotionDatabaseIds()
-    console.log('초기화 후 데이터베이스 ID:', dbIds)
-  } else {
-    console.log('기존 데이터베이스 사용:', dbIds.works)
-  }
+  // 데이터베이스는 더 이상 사용하지 않음 (일반 페이지로 작품 생성)
 
   // 작품별로 페이지 ID 매핑 저장
   const workPageMap = new Map<string, string>()
@@ -611,76 +630,217 @@ export async function syncToNotion(
     return
   }
   
+  // 기존 페이지 ID 매핑 불러오기
+  const existingPageMap = getNotionWorkPageMap()
+  
   for (const work of data.works) {
     try {
       console.log(`작품 "${work.title}" 동기화 시도 중...`)
       
-      // 일반 페이지로 작품 생성 (데이터베이스 속성 문제 우회)
-      const workPage = await client.pages.create({
-        parent: { page_id: rootPageId },
-        properties: {
-          title: {
-            title: [{ text: { content: work.title || '제목 없음' } }],
-          },
-        },
-        children: [
-          {
-            object: 'block',
-            type: 'paragraph',
-            paragraph: {
-              rich_text: [
-                { type: 'text', text: { content: `카테고리: ${work.category || '없음'}` } },
-              ],
-            },
-          },
-          {
-            object: 'block',
-            type: 'paragraph',
-            paragraph: {
-              rich_text: [
-                { type: 'text', text: { content: `태그: ${work.tags?.join(', ') || '없음'}` } },
-              ],
-            },
-          },
-          {
-            object: 'block',
-            type: 'paragraph',
-            paragraph: {
-              rich_text: [
-                { type: 'text', text: { content: `생성일: ${work.createdAt?.toISOString() || '없음'}` } },
-              ],
-            },
-          },
-          {
-            object: 'block',
-            type: 'paragraph',
-            paragraph: {
-              rich_text: [
-                { type: 'text', text: { content: `수정일: ${work.updatedAt?.toISOString() || '없음'}` } },
-              ],
-            },
-          },
-        ],
-      })
+      const existingPageIds = existingPageMap[work.id]
+      let workPageId: string
       
-      workPageMap.set(work.id, workPage.id)
-      console.log(`작품 "${work.title}" 동기화 완료 (ID: ${workPage.id})`)
-      
-      // 작품 페이지 내부에 연재 페이지 생성
-      try {
-        const serialPage = await client.pages.create({
-          parent: { page_id: workPage.id },
+      if (existingPageIds?.workPageId) {
+        // 기존 페이지가 있으면 업데이트
+        try {
+          // 페이지 제목 업데이트
+          await client.pages.update({
+            page_id: existingPageIds.workPageId,
+            properties: {
+              title: {
+                title: [{ text: { content: work.title || '제목 없음' } }],
+              },
+            },
+          })
+          
+          // 기존 블록 삭제 후 새로 생성
+          const existingBlocks = await client.blocks.children.list({ block_id: existingPageIds.workPageId })
+          for (const block of existingBlocks.results) {
+            try {
+              await client.blocks.delete({ block_id: block.id })
+            } catch (e) {
+              // 삭제 실패는 무시
+            }
+          }
+          
+          // 새 블록 추가
+          await client.blocks.children.append({
+            block_id: existingPageIds.workPageId,
+            children: [
+              {
+                object: 'block',
+                type: 'paragraph',
+                paragraph: {
+                  rich_text: [
+                    { type: 'text', text: { content: `카테고리: ${work.category || '없음'}` } },
+                  ],
+                },
+              },
+              {
+                object: 'block',
+                type: 'paragraph',
+                paragraph: {
+                  rich_text: [
+                    { type: 'text', text: { content: `태그: ${work.tags?.join(', ') || '없음'}` } },
+                  ],
+                },
+              },
+              {
+                object: 'block',
+                type: 'paragraph',
+                paragraph: {
+                  rich_text: [
+                    { type: 'text', text: { content: `생성일: ${work.createdAt?.toISOString() || '없음'}` } },
+                  ],
+                },
+              },
+              {
+                object: 'block',
+                type: 'paragraph',
+                paragraph: {
+                  rich_text: [
+                    { type: 'text', text: { content: `수정일: ${work.updatedAt?.toISOString() || '없음'}` } },
+                  ],
+                },
+              },
+            ],
+          })
+          
+          workPageId = existingPageIds.workPageId
+          console.log(`작품 "${work.title}" 업데이트 완료 (ID: ${workPageId})`)
+        } catch (updateError) {
+          console.warn(`작품 "${work.title}" 업데이트 실패, 새로 생성합니다:`, updateError)
+          // 업데이트 실패 시 새로 생성
+          const workPage = await client.pages.create({
+            parent: { page_id: rootPageId },
+            properties: {
+              title: {
+                title: [{ text: { content: work.title || '제목 없음' } }],
+              },
+            },
+            children: [
+              {
+                object: 'block',
+                type: 'paragraph',
+                paragraph: {
+                  rich_text: [
+                    { type: 'text', text: { content: `카테고리: ${work.category || '없음'}` } },
+                  ],
+                },
+              },
+              {
+                object: 'block',
+                type: 'paragraph',
+                paragraph: {
+                  rich_text: [
+                    { type: 'text', text: { content: `태그: ${work.tags?.join(', ') || '없음'}` } },
+                  ],
+                },
+              },
+              {
+                object: 'block',
+                type: 'paragraph',
+                paragraph: {
+                  rich_text: [
+                    { type: 'text', text: { content: `생성일: ${work.createdAt?.toISOString() || '없음'}` } },
+                  ],
+                },
+              },
+              {
+                object: 'block',
+                type: 'paragraph',
+                paragraph: {
+                  rich_text: [
+                    { type: 'text', text: { content: `수정일: ${work.updatedAt?.toISOString() || '없음'}` } },
+                  ],
+                },
+              },
+            ],
+          })
+          workPageId = workPage.id
+          console.log(`작품 "${work.title}" 생성 완료 (ID: ${workPageId})`)
+        }
+      } else {
+        // 기존 페이지가 없으면 새로 생성
+        const workPage = await client.pages.create({
+          parent: { page_id: rootPageId },
           properties: {
             title: {
-              title: [{ text: { content: '연재' } }],
+              title: [{ text: { content: work.title || '제목 없음' } }],
             },
           },
+          children: [
+            {
+              object: 'block',
+              type: 'paragraph',
+              paragraph: {
+                rich_text: [
+                  { type: 'text', text: { content: `카테고리: ${work.category || '없음'}` } },
+                ],
+              },
+            },
+            {
+              object: 'block',
+              type: 'paragraph',
+              paragraph: {
+                rich_text: [
+                  { type: 'text', text: { content: `태그: ${work.tags?.join(', ') || '없음'}` } },
+                ],
+              },
+            },
+            {
+              object: 'block',
+              type: 'paragraph',
+              paragraph: {
+                rich_text: [
+                  { type: 'text', text: { content: `생성일: ${work.createdAt?.toISOString() || '없음'}` } },
+                ],
+              },
+            },
+            {
+              object: 'block',
+              type: 'paragraph',
+              paragraph: {
+                rich_text: [
+                  { type: 'text', text: { content: `수정일: ${work.updatedAt?.toISOString() || '없음'}` } },
+                ],
+              },
+            },
+          ],
         })
-        serialPageMap.set(work.id, serialPage.id)
-        console.log(`작품 "${work.title}"의 연재 페이지 생성 완료`)
-      } catch (error) {
-        console.warn(`작품 "${work.title}"의 연재 페이지 생성 실패:`, error)
+        workPageId = workPage.id
+        console.log(`작품 "${work.title}" 생성 완료 (ID: ${workPageId})`)
       }
+      
+      workPageMap.set(work.id, workPageId)
+      
+      // 작품 페이지 내부에 연재 페이지 생성/업데이트
+      let serialPageId = existingPageIds?.serialPageId
+      if (!serialPageId) {
+        try {
+          const serialPage = await client.pages.create({
+            parent: { page_id: workPageId },
+            properties: {
+              title: {
+                title: [{ text: { content: '연재' } }],
+              },
+            },
+          })
+          serialPageId = serialPage.id
+          serialPageMap.set(work.id, serialPageId)
+          console.log(`작품 "${work.title}"의 연재 페이지 생성 완료`)
+        } catch (error) {
+          console.warn(`작품 "${work.title}"의 연재 페이지 생성 실패:`, error)
+        }
+      } else {
+        serialPageMap.set(work.id, serialPageId)
+      }
+      
+      // 페이지 ID 매핑 저장
+      updateNotionWorkPage(work.id, {
+        workPageId,
+        serialPageId,
+      })
     } catch (error: any) {
       console.error(`작품 ${work.id} (${work.title}) 동기화 실패:`, error)
       if (error instanceof Error) {

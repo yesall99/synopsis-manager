@@ -9,7 +9,7 @@ import { settingService } from '@/services/storage/storageService'
 import { episodeService } from '@/services/storage/storageService'
 import { chapterService } from '@/services/storage/storageService'
 import { tagService } from '@/services/storage/storageService'
-import { getNotionClient, initializeNotionDatabases, syncToNotion, syncFromNotion, getAccessiblePages } from '@/services/sync/notion'
+import { getNotionClient, initializeNotionDatabases, syncToNotion, syncFromNotion, getAccessiblePages, verifyRootPage } from '@/services/sync/notion'
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -458,12 +458,16 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                   if (!client) {
                                     throw new Error('노션 클라이언트를 생성할 수 없습니다.')
                                   }
-                                  await initializeNotionDatabases(client, notionPageId.trim())
+                                  // 페이지 접근 권한만 확인 (데이터베이스 생성은 업로드 시 자동으로 처리)
+                                  const hasAccess = await verifyRootPage(client, notionPageId.trim())
+                                  if (!hasAccess) {
+                                    throw new Error('노션 페이지에 접근할 수 없습니다. 통합이 해당 페이지에 연결되어 있는지 확인해주세요.')
+                                  }
                                   setIsNotionConnected(true)
                                   alert('노션 동기화가 설정되었습니다.')
                                 } catch (error) {
-                                  console.error('노션 초기화 실패:', error)
-                                  setNotionError(error instanceof Error ? error.message : '노션 초기화에 실패했습니다.')
+                                  console.error('노션 연결 실패:', error)
+                                  setNotionError(error instanceof Error ? error.message : '노션 연결에 실패했습니다.')
                                   setIsNotionConnected(false)
                                 } finally {
                                   setIsNotionInitializing(false)
