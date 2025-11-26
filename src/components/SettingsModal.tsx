@@ -510,13 +510,16 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                           <div className="ml-4 flex gap-2">
                             <button
                               onClick={async () => {
+                                console.log('노션으로 업로드 버튼 클릭됨')
                                 setIsNotionSyncing(true)
                                 setNotionError(null)
                                 try {
+                                  console.log('노션 클라이언트 생성 시도...')
                                   const client = getNotionClient()
                                   if (!client) {
                                     throw new Error('노션 클라이언트를 생성할 수 없습니다.')
                                   }
+                                  console.log('데이터 로드 시작...')
                                   const works = await workService.getAll()
                                   const synopses = await synopsisService.getAll()
                                   const characters = await characterService.getAll()
@@ -525,6 +528,17 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                   const chapters = await chapterService.getAll()
                                   const tags = await tagService.getAll()
                                   
+                                  console.log('로드된 데이터:', {
+                                    works: works.length,
+                                    synopses: synopses.length,
+                                    characters: characters.length,
+                                    settings: settings.length,
+                                    episodes: episodes.length,
+                                    chapters: chapters.length,
+                                    tags: tags.length,
+                                  })
+                                  
+                                  console.log('syncToNotion 호출 시작...')
                                   await syncToNotion(client, {
                                     works,
                                     synopses,
@@ -535,9 +549,13 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                                     // @ts-ignore - tags type mismatch
                                     tags: tags as any,
                                   })
+                                  console.log('syncToNotion 완료')
                                   alert('노션으로 데이터 동기화가 완료되었습니다.')
                                 } catch (error) {
                                   console.error('노션 동기화 실패:', error)
+                                  if (error instanceof Error) {
+                                    console.error('에러 상세:', error.message, error.stack)
+                                  }
                                   setNotionError(error instanceof Error ? error.message : '노션 동기화에 실패했습니다.')
                                 } finally {
                                   setIsNotionSyncing(false)
