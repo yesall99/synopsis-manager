@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Save, ArrowLeft, Trash2, Loader2, Edit2, X } from 'lucide-react'
 import { useCharacterStore } from '@/stores/characterStore'
+import { syncToNotionInBackground } from '@/utils/notionSync'
 import SynopsisEditor from '@/components/SynopsisEditor'
 
 export default function CharacterEdit() {
@@ -124,6 +125,9 @@ export default function CharacterEdit() {
         })
         setIsEditing(false) // 저장 후 보기 모드로
       }
+      
+      // 노션 동기화 (백그라운드)
+      syncToNotionInBackground().catch(console.error)
     } catch (error) {
       console.error('저장 실패:', error)
       alert('저장에 실패했습니다.')

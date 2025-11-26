@@ -4,6 +4,7 @@ import { Save, ArrowLeft, Loader2, X, Plus } from 'lucide-react'
 import { useWorkStore } from '@/stores/workStore'
 import { useSynopsisStore } from '@/stores/synopsisStore'
 import { useTagStore } from '@/stores/tagStore'
+import { syncToNotionInBackground } from '@/utils/notionSync'
 import type { WorkInput } from '@/types'
 
 export default function WorkEdit() {
@@ -111,6 +112,9 @@ export default function WorkEdit() {
         console.error('작품 ID가 없습니다:', { isNew, workId })
         throw new Error('작품 ID가 없습니다.')
       }
+      
+      // 노션 동기화 (백그라운드)
+      syncToNotionInBackground().catch(console.error)
     } catch (error) {
       console.error('저장 실패:', error)
       const errorMessage = error instanceof Error ? error.message : '알 수 없는 오류가 발생했습니다.'

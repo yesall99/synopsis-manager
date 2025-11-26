@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { isFirebaseConfigured } from './config/firebase'
 import { useSyncStore } from './stores/syncStore'
 import Layout from './components/Layout'
+import Toast from './components/Toast'
 import WorkList from './pages/WorkList'
 import WorkDetail from './pages/WorkDetail'
 import WorkEdit from './pages/WorkEdit'
@@ -44,6 +45,7 @@ function App() {
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>
+      <Toast />
     </BrowserRouter>
   )
 }

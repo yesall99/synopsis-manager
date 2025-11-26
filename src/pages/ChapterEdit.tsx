@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Save, ArrowLeft, Trash2, Loader2 } from 'lucide-react'
 import { useChapterStore } from '@/stores/chapterStore'
+import { syncToNotionInBackground } from '@/utils/notionSync'
 import type { ChapterStructureType } from '@/types'
 
 export default function ChapterEdit() {
@@ -104,6 +105,9 @@ export default function ChapterEdit() {
         })
         setIsEditing(false)
       }
+      
+      // 노션 동기화 (백그라운드)
+      syncToNotionInBackground().catch(console.error)
     } catch (error) {
       console.error('저장 실패:', error)
       alert('저장에 실패했습니다.')

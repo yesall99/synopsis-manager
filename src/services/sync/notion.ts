@@ -103,6 +103,15 @@ interface NotionWorkPageMap {
     charactersPageId?: string
     settingsPageId?: string
     serialPageId?: string
+    chapterPageIds?: Record<string, string> // chapterId -> pageId
+    characterPageIds?: Record<string, string> // characterId -> pageId
+    settingPageIds?: Record<string, string> // settingId -> pageId
+    episodePageIds?: Record<string, string> // episodeId -> pageId
+  }
+  // 태그 페이지 ID 매핑
+  __tags_page__?: {
+    workPageId: string
+    tagPageIds?: Record<string, string> // tagId -> pageId
   }
 }
 
@@ -121,10 +130,73 @@ export function updateNotionWorkPage(workId: string, pageIds: {
   charactersPageId?: string
   settingsPageId?: string
   serialPageId?: string
+  chapterPageIds?: Record<string, string>
+  characterPageIds?: Record<string, string>
+  settingPageIds?: Record<string, string>
+  episodePageIds?: Record<string, string>
 }): void {
   const map = getNotionWorkPageMap()
-  map[workId] = pageIds
+  map[workId] = { ...map[workId], ...pageIds }
   setNotionWorkPageMap(map)
+}
+
+// 하위 페이지 업데이트 헬퍼 함수
+async function updateOrCreatePage(
+  client: Client,
+  parentPageId: string,
+  pageId: string | undefined,
+  title: string,
+  children: any[]
+): Promise<string> {
+  if (pageId) {
+    // 기존 페이지 업데이트
+    try {
+      // 제목 업데이트
+      await client.pages.update({
+        page_id: pageId,
+        properties: {
+          title: {
+            title: [{ text: { content: title } }],
+          },
+        },
+      })
+      
+      // 기존 블록 삭제
+      const existingBlocks = await client.blocks.children.list({ block_id: pageId })
+      for (const block of existingBlocks.results) {
+        try {
+          await client.blocks.delete({ block_id: block.id })
+        } catch (e) {
+          // 삭제 실패는 무시
+        }
+      }
+      
+      // 새 블록 추가
+      if (children.length > 0) {
+        await client.blocks.children.append({
+          block_id: pageId,
+          children,
+        })
+      }
+      
+      return pageId
+    } catch (error) {
+      console.warn(`페이지 업데이트 실패, 새로 생성합니다:`, error)
+      // 업데이트 실패 시 새로 생성
+    }
+  }
+  
+  // 새 페이지 생성
+  const newPage = await client.pages.create({
+    parent: { page_id: parentPageId },
+    properties: {
+      title: {
+        title: [{ text: { content: title } }],
+      },
+    },
+    children,
+  })
+  return newPage.id
 }
 
 // 노션 데이터베이스 생성
@@ -851,23 +923,27 @@ export async function syncToNotion(
   }
   console.log(`작품 동기화 완료: ${workPageMap.size}개 성공`)
 
-  // 2. 각 작품별로 하위 페이지 생성
+  // 2. 각 작품별로 하위 페이지 생성/업데이트
   for (const work of data.works) {
     const workPageId = workPageMap.get(work.id)
     if (!workPageId) continue
 
-    // 2-1. 시놉시스 페이지 생성 (작품 페이지 하위)
+    const existingPageIds = existingPageMap[work.id] || {}
+    const characterPageIds: Record<string, string> = existingPageIds.characterPageIds || {}
+    const settingPageIds: Record<string, string> = existingPageIds.settingPageIds || {}
+    const chapterPageIds: Record<string, string> = existingPageIds.chapterPageIds || {}
+    const episodePageIds: Record<string, string> = existingPageIds.episodePageIds || {}
+
+    // 2-1. 시놉시스 페이지 생성/업데이트 (작품 페이지 하위)
     const synopsis = data.synopses.find(s => s.workId === work.id)
     try {
       const structureJson = synopsis ? JSON.stringify(synopsis.structure) : '{}'
-      await client.pages.create({
-        parent: { page_id: workPageId },
-        properties: {
-          title: {
-            title: [{ text: { content: '시놉시스' } }],
-          },
-        },
-        children: [
+      const synopsisPageId = await updateOrCreatePage(
+        client,
+        workPageId,
+        existingPageIds.synopsisPageId,
+        '시놉시스',
+        [
           {
             object: 'block',
             type: 'paragraph',
@@ -880,36 +956,37 @@ export async function syncToNotion(
               ],
             },
           },
-        ],
-      })
-      console.log(`작품 "${work.title}"의 시놉시스 페이지 생성 완료`)
+        ]
+      )
+      updateNotionWorkPage(work.id, { synopsisPageId })
+      console.log(`작품 "${work.title}"의 시놉시스 페이지 동기화 완료`)
     } catch (error) {
-      console.error(`작품 "${work.title}"의 시놉시스 페이지 생성 실패:`, error)
+      console.error(`작품 "${work.title}"의 시놉시스 페이지 동기화 실패:`, error)
     }
 
-    // 2-2. 캐릭터 페이지들 생성 (작품 페이지 하위)
+    // 2-2. 캐릭터 페이지들 생성/업데이트 (작품 페이지 하위)
     const characters = data.characters.filter(c => c.workId === work.id)
     try {
-      const charactersPage = await client.pages.create({
-        parent: { page_id: workPageId },
-        properties: {
-          title: {
-            title: [{ text: { content: '캐릭터' } }],
-          },
-        },
-      })
+      const charactersPageId = await updateOrCreatePage(
+        client,
+        workPageId,
+        existingPageIds.charactersPageId,
+        '캐릭터',
+        []
+      )
+      if (!existingPageIds.charactersPageId) {
+        updateNotionWorkPage(work.id, { charactersPageId })
+      }
       
-      // 각 캐릭터를 하위 페이지로 생성 (없어도 빈 페이지는 생성됨)
+      // 각 캐릭터를 하위 페이지로 생성/업데이트
       for (const character of characters) {
         try {
-          await client.pages.create({
-            parent: { page_id: charactersPage.id },
-            properties: {
-              title: {
-                title: [{ text: { content: character.name || '이름 없음' } }],
-              },
-            },
-            children: character.description ? [
+          const characterPageId = await updateOrCreatePage(
+            client,
+            charactersPageId,
+            characterPageIds[character.id],
+            character.name || '이름 없음',
+            character.description ? [
               {
                 object: 'block',
                 type: 'paragraph',
@@ -922,40 +999,42 @@ export async function syncToNotion(
                   ],
                 },
               },
-            ] : [],
-          })
+            ] : []
+          )
+          characterPageIds[character.id] = characterPageId
         } catch (error) {
-          console.error(`캐릭터 "${character.name}" 페이지 생성 실패:`, error)
+          console.error(`캐릭터 "${character.name}" 페이지 동기화 실패:`, error)
         }
       }
-      console.log(`작품 "${work.title}"의 캐릭터 페이지 생성 완료 (${characters.length}개)`)
+      updateNotionWorkPage(work.id, { characterPageIds })
+      console.log(`작품 "${work.title}"의 캐릭터 페이지 동기화 완료 (${characters.length}개)`)
     } catch (error) {
-      console.error(`작품 "${work.title}"의 캐릭터 페이지 생성 실패:`, error)
+      console.error(`작품 "${work.title}"의 캐릭터 페이지 동기화 실패:`, error)
     }
 
-    // 2-3. 설정 페이지들 생성 (작품 페이지 하위)
+    // 2-3. 설정 페이지들 생성/업데이트 (작품 페이지 하위)
     const settings = data.settings.filter(s => s.workId === work.id)
     try {
-      const settingsPage = await client.pages.create({
-        parent: { page_id: workPageId },
-        properties: {
-          title: {
-            title: [{ text: { content: '설정' } }],
-          },
-        },
-      })
+      const settingsPageId = await updateOrCreatePage(
+        client,
+        workPageId,
+        existingPageIds.settingsPageId,
+        '설정',
+        []
+      )
+      if (!existingPageIds.settingsPageId) {
+        updateNotionWorkPage(work.id, { settingsPageId })
+      }
       
-      // 각 설정을 하위 페이지로 생성 (없어도 빈 페이지는 생성됨)
+      // 각 설정을 하위 페이지로 생성/업데이트
       for (const setting of settings) {
         try {
-          await client.pages.create({
-            parent: { page_id: settingsPage.id },
-            properties: {
-              title: {
-                title: [{ text: { content: setting.name || '이름 없음' } }],
-              },
-            },
-            children: setting.description ? [
+          const settingPageId = await updateOrCreatePage(
+            client,
+            settingsPageId,
+            settingPageIds[setting.id],
+            setting.name || '이름 없음',
+            setting.description ? [
               {
                 object: 'block',
                 type: 'paragraph',
@@ -968,47 +1047,47 @@ export async function syncToNotion(
                   ],
                 },
               },
-            ] : [],
-          })
+            ] : []
+          )
+          settingPageIds[setting.id] = settingPageId
         } catch (error) {
-          console.error(`설정 "${setting.name}" 페이지 생성 실패:`, error)
+          console.error(`설정 "${setting.name}" 페이지 동기화 실패:`, error)
         }
       }
-      console.log(`작품 "${work.title}"의 설정 페이지 생성 완료 (${settings.length}개)`)
+      updateNotionWorkPage(work.id, { settingPageIds })
+      console.log(`작품 "${work.title}"의 설정 페이지 동기화 완료 (${settings.length}개)`)
     } catch (error) {
-      console.error(`작품 "${work.title}"의 설정 페이지 생성 실패:`, error)
+      console.error(`작품 "${work.title}"의 설정 페이지 동기화 실패:`, error)
     }
 
-    // 2-4. 연재 페이지 내부에 장과 회차 생성
+    // 2-4. 연재 페이지 내부에 장과 회차 생성/업데이트
     const serialPageId = serialPageMap.get(work.id)
     if (serialPageId) {
       const chapters = data.chapters.filter(c => c.workId === work.id)
       
-      // 장별로 그룹화하여 생성
+      // 장별로 그룹화하여 생성/업데이트
       for (const chapter of chapters) {
         try {
-          const chapterPage = await client.pages.create({
-            parent: { page_id: serialPageId },
-            properties: {
-              title: {
-                title: [{ text: { content: chapter.title } }],
-              },
-            },
-          })
-          chapterPageMap.set(chapter.id, chapterPage.id)
+          const chapterPageId = await updateOrCreatePage(
+            client,
+            serialPageId,
+            chapterPageIds[chapter.id],
+            chapter.title,
+            []
+          )
+          chapterPageIds[chapter.id] = chapterPageId
+          chapterPageMap.set(chapter.id, chapterPageId)
           
-          // 해당 장의 회차들 생성
+          // 해당 장의 회차들 생성/업데이트
           const episodes = data.episodes.filter(e => e.chapterId === chapter.id)
           for (const episode of episodes) {
             try {
-              await client.pages.create({
-                parent: { page_id: chapterPage.id },
-                properties: {
-                  title: {
-                    title: [{ text: { content: `제 ${episode.episodeNumber}화${episode.title ? ` - ${episode.title}` : ''}` } }],
-                  },
-                },
-                children: [
+              const episodePageId = await updateOrCreatePage(
+                client,
+                chapterPageId,
+                episodePageIds[episode.id],
+                `제 ${episode.episodeNumber}화${episode.title ? ` - ${episode.title}` : ''}`,
+                [
                   {
                     object: 'block',
                     type: 'paragraph',
@@ -1021,30 +1100,29 @@ export async function syncToNotion(
                       ],
                     },
                   },
-                ],
-              })
+                ]
+              )
+              episodePageIds[episode.id] = episodePageId
             } catch (error) {
-              console.error(`회차 ${episode.episodeNumber}화 페이지 생성 실패:`, error)
+              console.error(`회차 ${episode.episodeNumber}화 페이지 동기화 실패:`, error)
             }
           }
-          console.log(`장 "${chapter.title}" 및 회차 ${episodes.length}개 생성 완료`)
+          console.log(`장 "${chapter.title}" 및 회차 ${episodes.length}개 동기화 완료`)
         } catch (error) {
-          console.error(`장 "${chapter.title}" 페이지 생성 실패:`, error)
+          console.error(`장 "${chapter.title}" 페이지 동기화 실패:`, error)
         }
       }
       
-      // 장이 없는 회차들도 생성
+      // 장이 없는 회차들도 생성/업데이트
       const episodesWithoutChapter = data.episodes.filter(e => e.workId === work.id && !e.chapterId)
       for (const episode of episodesWithoutChapter) {
         try {
-          await client.pages.create({
-            parent: { page_id: serialPageId },
-            properties: {
-              title: {
-                title: [{ text: { content: `제 ${episode.episodeNumber}화${episode.title ? ` - ${episode.title}` : ''}` } }],
-              },
-            },
-            children: [
+          const episodePageId = await updateOrCreatePage(
+            client,
+            serialPageId,
+            episodePageIds[episode.id],
+            `제 ${episode.episodeNumber}화${episode.title ? ` - ${episode.title}` : ''}`,
+            [
               {
                 object: 'block',
                 type: 'paragraph',
@@ -1057,12 +1135,19 @@ export async function syncToNotion(
                   ],
                 },
               },
-            ],
-          })
+            ]
+          )
+          episodePageIds[episode.id] = episodePageId
         } catch (error) {
-          console.error(`회차 ${episode.episodeNumber}화 페이지 생성 실패:`, error)
+          console.error(`회차 ${episode.episodeNumber}화 페이지 동기화 실패:`, error)
         }
       }
+      
+      // 페이지 ID 매핑 저장
+      updateNotionWorkPage(work.id, {
+        chapterPageIds,
+        episodePageIds,
+      })
     }
   }
 
@@ -1097,27 +1182,19 @@ export async function syncToNotion(
     console.log(`태그 ${data.tags.length}개 동기화 시작...`)
     let tagSuccessCount = 0
     
-    // 기존 태그 페이지 ID 매핑 확인
-    const tagPageMap: Record<string, string> = {}
-    try {
-      const existingTagBlocks = await client.blocks.children.list({ block_id: tagsPageId })
-      // 태그 페이지의 하위 페이지 목록 가져오기 (직접 하위 페이지는 blocks.children.list로는 가져올 수 없음)
-      // 대신 각 태그를 하위 페이지로 생성
-    } catch (error) {
-      console.warn('기존 태그 목록 확인 실패:', error)
-    }
+    // 태그 페이지 ID 매핑 가져오기
+    const tagsPageData = existingPageMap.__tags_page__
+    const tagPageIds: Record<string, string> = tagsPageData?.tagPageIds || {}
     
     for (const tag of data.tags) {
       try {
-        // 태그를 태그 페이지의 하위 페이지로 생성
-        await client.pages.create({
-          parent: { page_id: tagsPageId },
-          properties: {
-            title: {
-              title: [{ text: { content: tag.name || '이름 없음' } }],
-            },
-          },
-          children: [
+        // 태그를 태그 페이지의 하위 페이지로 생성/업데이트
+        const tagPageId = await updateOrCreatePage(
+          client,
+          tagsPageId,
+          tagPageIds[tag.id],
+          tag.name || '이름 없음',
+          [
             {
               object: 'block',
               type: 'paragraph',
@@ -1145,8 +1222,9 @@ export async function syncToNotion(
                 ],
               },
             },
-          ],
-        })
+          ]
+        )
+        tagPageIds[tag.id] = tagPageId
         tagSuccessCount++
         console.log(`태그 "${tag.name}" 동기화 완료`)
       } catch (error) {
@@ -1155,6 +1233,18 @@ export async function syncToNotion(
           console.error('에러 메시지:', error.message)
         }
       }
+    }
+    
+    // 태그 페이지 ID 매핑 저장
+    if (tagsPageData) {
+      tagsPageData.tagPageIds = tagPageIds
+      existingPageMap.__tags_page__ = tagsPageData
+      setNotionWorkPageMap(existingPageMap)
+    } else {
+      updateNotionWorkPage('__tags_page__', {
+        workPageId: tagsPageId,
+        tagPageIds,
+      })
     }
     console.log(`태그 동기화 완료: ${tagSuccessCount}개 성공`)
   } else {

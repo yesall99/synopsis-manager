@@ -161,6 +161,9 @@ export default function EpisodeEdit() {
         })
         setIsEditing(false) // 저장 후 보기 모드로
       }
+      
+      // 노션 동기화 (백그라운드)
+      syncToNotionInBackground().catch(console.error)
     } catch (error) {
       console.error('저장 실패:', error)
       alert('저장에 실패했습니다.')

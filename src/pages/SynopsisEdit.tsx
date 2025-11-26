@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Save, ArrowLeft, Loader2, X } from 'lucide-react'
 import { useSynopsisStore } from '@/stores/synopsisStore'
+import { syncToNotionInBackground } from '@/utils/notionSync'
 import SynopsisStructureEditor from '@/components/SynopsisStructureEditor'
 import type { SynopsisStructure } from '@/types'
 
@@ -71,6 +72,9 @@ export default function SynopsisEdit() {
         await updateSynopsis(id, synopsisData)
         // 저장 후에도 편집 모드 유지
       }
+      
+      // 노션 동기화 (백그라운드)
+      syncToNotionInBackground().catch(console.error)
     } catch (error) {
       console.error('저장 실패:', error)
       alert('저장에 실패했습니다.')
