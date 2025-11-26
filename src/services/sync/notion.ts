@@ -171,34 +171,64 @@ async function updateOrCreatePage(
           },
         })
         
-        // 기존 블록 삭제 (아카이브되지 않은 것만)
+        // 기존 블록 확인 및 내용 비교
         try {
           const existingBlocks = await client.blocks.children.list({ block_id: pageId })
-          for (const block of existingBlocks.results) {
-            try {
-              // 블록이 아카이브되어 있지 않은지 확인
-              if (!(block as any).archived) {
-                await client.blocks.delete({ block_id: block.id })
+          const activeBlocks = existingBlocks.results.filter((b: any) => !b.archived)
+          
+          // 새 블록 내용을 문자열로 변환 (비교용)
+          const newContent = JSON.stringify(children)
+          
+          // 기존 블록 내용을 문자열로 변환 (비교용)
+          const existingContent = JSON.stringify(
+            activeBlocks.map((block: any) => {
+              if (block.type === 'paragraph' && block.paragraph?.rich_text) {
+                return {
+                  type: 'paragraph',
+                  paragraph: {
+                    rich_text: block.paragraph.rich_text,
+                  },
+                }
               }
-            } catch (e) {
-              // 삭제 실패는 무시 (아카이브된 블록 등)
+              return block
+            })
+          )
+          
+          // 내용이 다르면 기존 블록 삭제 후 새로 추가
+          if (newContent !== existingContent) {
+            // 기존 블록 삭제
+            for (const block of activeBlocks) {
+              try {
+                await client.blocks.delete({ block_id: block.id })
+              } catch (e) {
+                // 삭제 실패는 무시
+              }
+            }
+            
+            // 새 블록 추가
+            if (children.length > 0) {
+              try {
+                await client.blocks.children.append({
+                  block_id: pageId,
+                  children,
+                })
+              } catch (appendError) {
+                console.warn('블록 추가 실패:', appendError)
+              }
             }
           }
+          // 내용이 같으면 아무것도 하지 않음
         } catch (blockError) {
-          // 블록 목록 가져오기 실패는 무시하고 계속 진행
-          console.warn('기존 블록 목록 가져오기 실패:', blockError)
-        }
-        
-        // 새 블록 추가
-        if (children.length > 0) {
-          try {
-            await client.blocks.children.append({
-              block_id: pageId,
-              children,
-            })
-          } catch (appendError) {
-            // 블록 추가 실패는 무시하고 계속 진행
-            console.warn('블록 추가 실패:', appendError)
+          // 블록 확인 실패 시 새 블록 추가 시도
+          if (children.length > 0) {
+            try {
+              await client.blocks.children.append({
+                block_id: pageId,
+                children,
+              })
+            } catch (appendError) {
+              console.warn('블록 추가 실패:', appendError)
+            }
           }
         }
         
@@ -765,58 +795,91 @@ export async function syncToNotion(
             },
           })
           
-          // 기존 블록 삭제 후 새로 생성
-          const existingBlocks = await client.blocks.children.list({ block_id: existingPageIds.workPageId })
-          for (const block of existingBlocks.results) {
-            try {
-              await client.blocks.delete({ block_id: block.id })
-            } catch (e) {
-              // 삭제 실패는 무시
-            }
-          }
+          // 새 블록 내용 준비
+          const newBlocks = [
+            {
+              object: 'block' as const,
+              type: 'paragraph' as const,
+              paragraph: {
+                rich_text: [
+                  { type: 'text' as const, text: { content: `카테고리: ${work.category || '없음'}` } },
+                ],
+              },
+            },
+            {
+              object: 'block' as const,
+              type: 'paragraph' as const,
+              paragraph: {
+                rich_text: [
+                  { type: 'text' as const, text: { content: `태그: ${work.tags?.join(', ') || '없음'}` } },
+                ],
+              },
+            },
+            {
+              object: 'block' as const,
+              type: 'paragraph' as const,
+              paragraph: {
+                rich_text: [
+                  { type: 'text' as const, text: { content: `생성일: ${work.createdAt?.toISOString() || '없음'}` } },
+                ],
+              },
+            },
+            {
+              object: 'block' as const,
+              type: 'paragraph' as const,
+              paragraph: {
+                rich_text: [
+                  { type: 'text' as const, text: { content: `수정일: ${work.updatedAt?.toISOString() || '없음'}` } },
+                ],
+              },
+            },
+          ]
           
-          // 새 블록 추가
-          await client.blocks.children.append({
-            block_id: existingPageIds.workPageId,
-            children: [
-              {
-                object: 'block',
-                type: 'paragraph',
-                paragraph: {
-                  rich_text: [
-                    { type: 'text', text: { content: `카테고리: ${work.category || '없음'}` } },
-                  ],
-                },
-              },
-              {
-                object: 'block',
-                type: 'paragraph',
-                paragraph: {
-                  rich_text: [
-                    { type: 'text', text: { content: `태그: ${work.tags?.join(', ') || '없음'}` } },
-                  ],
-                },
-              },
-              {
-                object: 'block',
-                type: 'paragraph',
-                paragraph: {
-                  rich_text: [
-                    { type: 'text', text: { content: `생성일: ${work.createdAt?.toISOString() || '없음'}` } },
-                  ],
-                },
-              },
-              {
-                object: 'block',
-                type: 'paragraph',
-                paragraph: {
-                  rich_text: [
-                    { type: 'text', text: { content: `수정일: ${work.updatedAt?.toISOString() || '없음'}` } },
-                  ],
-                },
-              },
-            ],
-          })
+          // 기존 블록 확인 및 내용 비교
+          try {
+            const existingBlocks = await client.blocks.children.list({ block_id: existingPageIds.workPageId })
+            const activeBlocks = existingBlocks.results.filter((b: any) => !b.archived)
+            
+            // 새 블록 내용을 문자열로 변환 (비교용)
+            const newContent = JSON.stringify(newBlocks)
+            
+            // 기존 블록 내용을 문자열로 변환 (비교용)
+            const existingContent = JSON.stringify(
+              activeBlocks.map((block: any) => {
+                if (block.type === 'paragraph' && block.paragraph?.rich_text) {
+                  return {
+                    type: 'paragraph',
+                    paragraph: {
+                      rich_text: block.paragraph.rich_text,
+                    },
+                  }
+                }
+                return block
+              })
+            )
+            
+            // 내용이 다르면 기존 블록 삭제 후 새로 추가
+            if (newContent !== existingContent) {
+              // 기존 블록 삭제
+              for (const block of activeBlocks) {
+                try {
+                  await client.blocks.delete({ block_id: block.id })
+                } catch (e) {
+                  // 삭제 실패는 무시
+                }
+              }
+              
+              // 새 블록 추가
+              await client.blocks.children.append({
+                block_id: existingPageIds.workPageId,
+                children: newBlocks,
+              })
+            }
+            // 내용이 같으면 아무것도 하지 않음
+          } catch (blockError) {
+            // 블록 확인 실패는 무시
+            console.warn('블록 확인 실패:', blockError)
+          }
           
           workPageId = existingPageIds.workPageId
           console.log(`작품 "${work.title}" 업데이트 완료 (ID: ${workPageId})`)
