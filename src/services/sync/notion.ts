@@ -1128,10 +1128,16 @@ export async function syncToNotion(
               object: 'block',
               type: 'paragraph',
               paragraph: {
-                rich_text: [
-                  { type: 'text', text: { content: `카테고리: ${tag.categoryId || '없음'}` } },
-                ...(tag.color ? [{ type: 'text', text: { content: ` | 색상: ${tag.color}` } }] : []),
-              ],
+                rich_text: (() => {
+                  const texts: Array<{ type: 'text'; text: { content: string } }> = [
+                    { type: 'text', text: { content: `카테고리: ${tag.categoryId || '없음'}` } },
+                  ]
+                  if (tag.color) {
+                    texts.push({ type: 'text', text: { content: ` | 색상: ${tag.color}` } })
+                  }
+                  return texts
+                })(),
+              },
             },
             {
               object: 'block',
