@@ -101,14 +101,14 @@ export async function createNotionDatabase(
   properties: any
 ): Promise<string> {
   try {
-    const response = await client.databases.create({
+    const createParams = {
       parent: {
-        type: 'page_id',
+        type: 'page_id' as const,
         page_id: parentPageId,
       },
       title: [
         {
-          type: 'text',
+          type: 'text' as const,
           text: {
             content: title,
           },
@@ -116,10 +116,35 @@ export async function createNotionDatabase(
       ],
       // @ts-ignore - Notion API types may not match exactly
       properties: properties,
-    })
+    }
+    
+    console.log('데이터베이스 생성 요청:', JSON.stringify(createParams, null, 2))
+    
+    const response = await client.databases.create(createParams)
+    
+    console.log('데이터베이스 생성 응답 ID:', response.id)
+    
+    // 생성 직후 속성 확인
+    try {
+      const createdDb = await client.databases.retrieve({ database_id: response.id })
+      // @ts-ignore
+      const createdProps = createdDb.properties || {}
+      console.log('생성 직후 데이터베이스 속성:', Object.keys(createdProps))
+      
+      if (Object.keys(createdProps).length === 0) {
+        console.error('경고: 데이터베이스가 생성되었지만 속성이 없습니다!')
+        console.error('생성 요청 속성:', Object.keys(properties))
+      }
+    } catch (checkError) {
+      console.warn('생성 직후 속성 확인 실패:', checkError)
+    }
+    
     return response.id
   } catch (error) {
     console.error('노션 데이터베이스 생성 실패:', error)
+    if (error instanceof Error) {
+      console.error('에러 상세:', error.message)
+    }
     throw error
   }
 }
@@ -341,6 +366,24 @@ export async function initializeNotionDatabases(client: Client, rootPageId: stri
     '생성일': { date: {} },
     '수정일': { date: {} },
   })
+
+  // 생성 후 속성 확인
+  try {
+    const createdDb = await client.databases.retrieve({ database_id: newDbIds.works })
+    // @ts-ignore
+    const createdProps = createdDb.properties || {}
+    console.log('생성된 데이터베이스 속성:', Object.keys(createdProps))
+    
+    // 필수 속성이 없으면 에러 로그만 남기고 계속 진행 (나중에 페이지 생성 시 다시 시도)
+    const requiredProps = ['제목', '카테고리', '태그', '생성일', '수정일']
+    const missingProps = requiredProps.filter(prop => !createdProps[prop])
+    if (missingProps.length > 0) {
+      console.warn('데이터베이스 생성 후에도 속성이 없습니다:', missingProps)
+      console.warn('페이지 생성 시 속성을 다시 확인하고 필요시 재생성합니다.')
+    }
+  } catch (error) {
+    console.warn('생성된 데이터베이스 속성 확인 실패:', error)
+  }
 
   setNotionDatabaseIds(newDbIds)
   return newDbIds
@@ -568,55 +611,82 @@ export async function syncToNotion(
       try {
         console.log(`작품 "${work.title}" 동기화 시도 중...`)
         
-        // 데이터베이스 속성 확인 (없으면 새로 생성)
-        try {
-          const db = await client.databases.retrieve({ database_id: dbIds.works })
-          // @ts-ignore
-          const dbProps = db.properties || {}
-          console.log(`작품 생성 전 데이터베이스 속성 확인:`, Object.keys(dbProps))
-          
-          // 필수 속성이 없으면 새 데이터베이스 생성
-          const requiredProps = ['제목', '카테고리', '태그', '생성일', '수정일']
-          const missingRequired = requiredProps.filter(prop => !dbProps[prop])
-          if (missingRequired.length > 0) {
-            console.warn(`필수 속성이 누락되어 있습니다. 새 데이터베이스를 생성합니다:`, missingRequired)
-            const rootPageId = getRootPageId()
-            if (rootPageId) {
-              const newDbIds = await initializeNotionDatabases(client, rootPageId)
-              dbIds.works = newDbIds.works
-              setNotionDatabaseIds(newDbIds)
-              console.log(`새 데이터베이스 생성 완료:`, dbIds.works)
-            } else {
-              throw new Error('Root page ID가 없어서 새 데이터베이스를 생성할 수 없습니다.')
+        // 속성 체크 없이 바로 페이지 생성 시도
+        let retryCount = 0
+        const maxRetries = 3
+        
+        while (retryCount <= maxRetries) {
+          try {
+            const properties = workToNotionProperties(work)
+            console.log('작품 속성:', JSON.stringify(properties, null, 2))
+            
+            const workPage = await client.pages.create({
+              parent: { database_id: dbIds.works },
+              properties: properties,
+            })
+            workPageMap.set(work.id, workPage.id)
+            console.log(`작품 "${work.title}" 동기화 완료 (ID: ${workPage.id})`)
+            break // 성공하면 루프 종료
+          } catch (error: any) {
+            // 속성 오류인 경우 속성을 추가하고 재시도
+            if (error?.message?.includes('is not a property that exists') || error?.code === 'validation_error') {
+              console.warn(`속성 오류 발생 (시도 ${retryCount + 1}/${maxRetries}). 속성을 추가하고 재시도합니다.`)
+              
+              try {
+                // 데이터베이스에 속성 추가 시도
+                await client.databases.update({
+                  database_id: dbIds.works,
+                  // @ts-ignore
+                  properties: {
+                    '제목': { title: {} },
+                    '카테고리': { rich_text: {} },
+                    '태그': { multi_select: { options: [] } },
+                    '생성일': { date: {} },
+                    '수정일': { date: {} },
+                  },
+                })
+                console.log('속성 추가 완료, 재시도합니다.')
+                retryCount++
+                await new Promise(resolve => setTimeout(resolve, 1000))
+                continue
+              } catch (updateError) {
+                console.warn('속성 추가 실패, 새 데이터베이스 생성 시도:', updateError)
+                // 속성 추가 실패 시 새 데이터베이스 생성
+                if (retryCount < maxRetries) {
+                  const rootPageId = getRootPageId()
+                  if (rootPageId) {
+                    const newDbIds = await initializeNotionDatabases(client, rootPageId)
+                    dbIds.works = newDbIds.works
+                    setNotionDatabaseIds(newDbIds)
+                    console.log(`새 데이터베이스 생성 완료:`, dbIds.works)
+                    retryCount++
+                    await new Promise(resolve => setTimeout(resolve, 1000))
+                    continue
+                  }
+                }
+              }
             }
-          }
-        } catch (error) {
-          console.warn('데이터베이스 속성 확인 실패, 새 데이터베이스 생성 시도:', error)
-          const rootPageId = getRootPageId()
-          if (rootPageId) {
-            const newDbIds = await initializeNotionDatabases(client, rootPageId)
-            dbIds.works = newDbIds.works
-            setNotionDatabaseIds(newDbIds)
-            console.log(`새 데이터베이스 생성 완료:`, dbIds.works)
-          } else {
-            throw new Error('Root page ID가 없어서 새 데이터베이스를 생성할 수 없습니다.')
+            
+            // 다른 오류이거나 최대 재시도 초과
+            if (retryCount >= maxRetries) {
+              throw error
+            }
+            retryCount++
+            await new Promise(resolve => setTimeout(resolve, 1000))
           }
         }
         
-        const properties = workToNotionProperties(work)
-        console.log('작품 속성:', JSON.stringify(properties, null, 2))
-        
-        const workPage = await client.pages.create({
-          parent: { database_id: dbIds.works },
-          properties: properties,
-        })
-        workPageMap.set(work.id, workPage.id)
-        console.log(`작품 "${work.title}" 동기화 완료 (ID: ${workPage.id})`)
+        // 작품 페이지 내부에 연재 페이지 생성
+        const workPageId = workPageMap.get(work.id)
+        if (!workPageId) {
+          console.error(`작품 "${work.title}"의 페이지 ID를 찾을 수 없습니다.`)
+          continue
+        }
         
         // 작품 페이지 내부에 연재 페이지 생성
         try {
           const serialPage = await client.pages.create({
-            parent: { page_id: workPage.id },
+            parent: { page_id: workPageId },
             properties: {
               title: {
                 title: [{ text: { content: '연재' } }],
