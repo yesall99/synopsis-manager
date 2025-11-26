@@ -5,6 +5,8 @@ export interface TagCategory {
   order: number // 정렬 순서
   createdAt: Date
   updatedAt: Date
+  syncedAt?: Date
+  isDirty?: boolean // 동기화 필요 여부
 }
 
 // 태그 소분류 (예: 가이드버스, 헌터물, 현대물)
@@ -16,8 +18,10 @@ export interface Tag {
   isNew?: boolean // 새 태그 표시
   createdAt: Date
   updatedAt: Date
+  syncedAt?: Date
+  isDirty?: boolean // 동기화 필요 여부
 }
 
-export type TagCategoryInput = Omit<TagCategory, 'id' | 'createdAt' | 'updatedAt'>
-export type TagInput = Omit<Tag, 'id' | 'createdAt' | 'updatedAt'>
+export type TagCategoryInput = Omit<TagCategory, 'id' | 'createdAt' | 'updatedAt' | 'syncedAt' | 'isDirty'>
+export type TagInput = Omit<Tag, 'id' | 'createdAt' | 'updatedAt' | 'syncedAt' | 'isDirty'>
 
