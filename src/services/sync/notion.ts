@@ -153,13 +153,13 @@ async function updateOrCreatePage(
   children: any[]
 ): Promise<string> {
   if (pageId) {
-    // 기존 페이지 업데이트
+    // 기존 페이지 업데이트 시도
     try {
       // 페이지가 아카이브되어 있는지 확인
       const existingPage = await client.pages.retrieve({ page_id: pageId })
       if ((existingPage as any).archived) {
         console.warn(`페이지가 아카이브되어 있습니다. 새로 생성합니다: ${pageId}`)
-        // 아카이브된 페이지는 새로 생성
+        // 아카이브된 페이지는 새로 생성 (기존 ID는 무효화됨)
       } else {
         // 제목 업데이트
         await client.pages.update({
@@ -202,20 +202,23 @@ async function updateOrCreatePage(
           }
         }
         
+        // 업데이트 성공 - 기존 페이지 ID 반환
         return pageId
       }
     } catch (error: any) {
-      // 아카이브 오류인 경우 새로 생성
+      // 아카이브 오류인 경우에만 새로 생성
       if (error?.message?.includes('archived')) {
         console.warn(`아카이브된 페이지입니다. 새로 생성합니다: ${pageId}`)
+        // 아카이브된 경우에만 새로 생성 (기존 ID는 무효화됨)
       } else {
-        console.warn(`페이지 업데이트 실패, 새로 생성합니다:`, error)
+        // 다른 오류는 로그만 남기고 기존 페이지 ID 유지
+        console.error(`페이지 업데이트 실패, 기존 페이지 ID 유지:`, error)
+        return pageId // 기존 페이지 ID 반환 (새로 생성하지 않음)
       }
-      // 업데이트 실패 시 새로 생성
     }
   }
   
-  // 새 페이지 생성
+  // 새 페이지 생성 (기존 페이지가 없거나 아카이브된 경우만)
   try {
     const newPage = await client.pages.create({
       parent: { page_id: parentPageId },
